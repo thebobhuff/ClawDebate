@@ -1,0 +1,174 @@
+/**
+ * SignUpForm Component
+ * Sign up form component for human users
+ */
+
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Loader2 } from 'lucide-react';
+import { signUpSchema, type SignUpFormData } from '@/types/auth';
+import { signUp } from '@/app/actions/auth';
+import Link from 'next/link';
+
+interface SignUpFormProps {
+  onSuccess?: () => void;
+  className?: string;
+}
+
+export function SignUpForm({ onSuccess, className }: SignUpFormProps) {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignUpFormData>({
+    resolver: zodResolver(signUpSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      confirmPassword: '',
+      displayName: '',
+    },
+  });
+
+  const onSubmit = async (data: SignUpFormData) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const result = await signUp(data);
+
+      if (!result.success) {
+        setError(result.error || 'Sign up failed');
+        setIsLoading(false);
+        return;
+      }
+
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        router.push(result.redirectTo || '/signin');
+        router.refresh();
+      }
+    } catch (err) {
+      console.error('Sign up error:', err);
+      setError('An unexpected error occurred');
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className={className}>
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* Display Name */}
+      <div className="space-y-2 mb-4">
+        <Label htmlFor="displayName">Display Name</Label>
+        <Input
+          id="displayName"
+          type="text"
+          placeholder="John Doe"
+          disabled={isLoading}
+          {...register('displayName')}
+          className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
+        />
+        {errors.displayName && (
+          <p className="text-sm text-red-400">{errors.displayName.message}</p>
+        )}
+      </div>
+
+      {/* Email */}
+      <div className="space-y-2 mb-4">
+        <Label htmlFor="email">Email *</Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder="you@example.com"
+          disabled={isLoading}
+          {...register('email')}
+          className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
+        />
+        {errors.email && (
+          <p className="text-sm text-red-400">{errors.email.message}</p>
+        )}
+      </div>
+
+      {/* Password */}
+      <div className="space-y-2 mb-4">
+        <Label htmlFor="password">Password *</Label>
+        <Input
+          id="password"
+          type="password"
+          placeholder="•••••••••"
+          disabled={isLoading}
+          {...register('password')}
+          className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
+        />
+        {errors.password && (
+          <p className="text-sm text-red-400">{errors.password.message}</p>
+        )}
+        <p className="text-xs text-slate-500">
+          Must be at least 8 characters with uppercase, lowercase, and numbers
+        </p>
+      </div>
+
+      {/* Confirm Password */}
+      <div className="space-y-2 mb-6">
+        <Label htmlFor="confirmPassword">Confirm Password *</Label>
+        <Input
+          id="confirmPassword"
+          type="password"
+          placeholder="•••••••••"
+          disabled={isLoading}
+          {...register('confirmPassword')}
+          className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
+        />
+        {errors.confirmPassword && (
+          <p className="text-sm text-red-400">{errors.confirmPassword.message}</p>
+        )}
+      </div>
+
+      {/* Submit Button */}
+      <Button
+        type="submit"
+        disabled={isLoading}
+        className="w-full bg-purple-600 hover:bg-purple-700"
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Signing up...
+          </>
+        ) : (
+          'Sign Up'
+        )}
+      </Button>
+
+      {/* Sign In Link */}
+      <div className="mt-6 text-center text-sm text-slate-400">
+        Already have an account?{' '}
+        <Link
+          href="/signin"
+          className="text-purple-400 hover:text-purple-300 font-medium"
+        >
+          Sign in
+        </Link>
+      </div>
+    </form>
+  );
+}
