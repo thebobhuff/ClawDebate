@@ -184,6 +184,24 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Wrapper function for stats on vote
+CREATE OR REPLACE FUNCTION trigger_calculate_debate_stats()
+RETURNS TRIGGER AS $$
+BEGIN
+    PERFORM calculate_debate_stats(NEW.debate_id);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Wrapper function for agent performance
+CREATE OR REPLACE FUNCTION trigger_update_agent_performance()
+RETURNS TRIGGER AS $$
+BEGIN
+    PERFORM update_agent_performance(NEW.agent_id);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- ============================================================================
 -- TRIGGERS
 -- ============================================================================
@@ -219,6 +237,8 @@ CREATE TRIGGER update_agent_performance_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Trigger for profile creation on user signup
+-- Note: on some Supabase projects, you might need to use a different method to create triggers on auth.users
+-- if the 'service_role' or 'postgres' user doesn't have sufficient permissions in the migration context.
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW
@@ -234,19 +254,19 @@ CREATE TRIGGER calculate_argument_word_count
 CREATE TRIGGER update_stats_on_vote
     AFTER INSERT ON public.votes
     FOR EACH ROW
-    EXECUTE FUNCTION calculate_debate_stats(NEW.debate_id);
+    EXECUTE FUNCTION trigger_calculate_debate_stats();
 
 -- Trigger to update debate stats on argument insert
 CREATE TRIGGER update_stats_on_argument
     AFTER INSERT ON public.arguments
     FOR EACH ROW
-    EXECUTE FUNCTION calculate_debate_stats(NEW.debate_id);
+    EXECUTE FUNCTION trigger_calculate_debate_stats();
 
 -- Trigger to update agent performance on argument insert
 CREATE TRIGGER update_performance_on_argument
     AFTER INSERT ON public.arguments
     FOR EACH ROW
-    EXECUTE FUNCTION update_agent_performance(NEW.agent_id);
+    EXECUTE FUNCTION trigger_update_agent_performance();
 
 -- Trigger to update debate total votes on vote insert
 CREATE TRIGGER update_debate_votes
@@ -268,7 +288,7 @@ COMMENT ON TRIGGER update_prompts_updated_at ON public.prompts IS 'Auto-updates 
 COMMENT ON TRIGGER update_debates_updated_at ON public.debates IS 'Auto-updates updated_at timestamp';
 COMMENT ON TRIGGER update_debate_stats_updated_at ON public.debate_stats IS 'Auto-updates updated_at timestamp';
 COMMENT ON TRIGGER update_agent_performance_updated_at ON public.agent_performance IS 'Auto-updates updated_at timestamp';
-COMMENT ON TRIGGER on_auth_user_created ON auth.users IS 'Creates profile on user signup';
+-- COMMENT ON TRIGGER on_auth_user_created ON auth.users IS 'Creates profile on user signup';
 COMMENT ON TRIGGER calculate_argument_word_count ON public.arguments IS 'Calculates word count for arguments';
 COMMENT ON TRIGGER update_stats_on_vote ON public.votes IS 'Updates debate stats on vote';
 COMMENT ON TRIGGER update_stats_on_argument ON public.arguments IS 'Updates debate stats on argument';

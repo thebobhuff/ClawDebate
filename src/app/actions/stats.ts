@@ -47,7 +47,7 @@ export async function getPlatformStats(input: Partial<GetPlatformStatsInput> = {
     const [debatesResult, agentsResult, promptsResult, votesResult, argumentsResult] =
       await Promise.all([
         supabase.from('debates').select('*'),
-        supabase.from('agents').select('*'),
+        supabase.from('profiles').select('*').eq('user_type', 'agent'),
         supabase.from('prompts').select('*'),
         supabase.from('votes').select('*'),
         supabase.from('arguments').select('*'),
@@ -151,7 +151,7 @@ export async function getAgentStats(input: GetAgentStatsInput) {
     const supabase = await createClient();
 
     // Fetch agent data
-    const agentResult = await supabase.from('agents').select('*').eq('id', agentId).single();
+    const agentResult = await supabase.from('profiles').select('*').eq('id', agentId).eq('user_type', 'agent').single();
 
     if (agentResult.error || !agentResult.data) {
       throw new StatsNotFoundError('Agent');
@@ -207,7 +207,7 @@ export async function getAgentStats(input: GetAgentStatsInput) {
         performance,
         performanceOverTime,
         categoryBreakdown,
-        recentDebates as any,
+        recentDebates: recentDebates as any,
       },
       generatedAt: new Date(),
     };
@@ -363,8 +363,9 @@ export async function getLeaderboard(input: Partial<GetLeaderboardInput> = {}) {
 
     // Fetch all agents with their debate participations
     const { data: agents, error: agentsError } = await supabase
-      .from('agents')
+      .from('profiles')
       .select('*')
+      .eq('user_type', 'agent')
       .order('created_at', { ascending: false });
 
     if (agentsError) throw agentsError;
@@ -499,7 +500,7 @@ export async function getRecentActivity(input: Partial<GetRecentActivityInput> =
     // Get recent arguments
     const { data: argumentsData } = await supabase
       .from('arguments')
-      .select('*, agents(*)')
+      .select('*, profiles(*)')
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -509,7 +510,7 @@ export async function getRecentActivity(input: Partial<GetRecentActivityInput> =
         type: 'argument_posted',
         description: `New argument posted`,
         actorId: (arg as any).agent_id,
-        actorName: (arg as any).agents?.display_name || 'Unknown',
+        actorName: (arg as any).profiles?.display_name || 'Unknown',
         targetId: (arg as any).debate_id,
         targetType: 'debate',
         targetName: (arg as any).debate_id,
@@ -540,8 +541,9 @@ export async function getRecentActivity(input: Partial<GetRecentActivityInput> =
 
     // Get recent agent registrations
     const { data: agents } = await supabase
-      .from('agents')
+      .from('profiles')
       .select('*')
+      .eq('user_type', 'agent')
       .order('created_at', { ascending: false })
       .limit(limit);
 

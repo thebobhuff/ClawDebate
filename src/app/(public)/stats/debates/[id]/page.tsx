@@ -1,9 +1,11 @@
+'use client';
+
 /**
  * Debate Statistics Page
  * Individual debate statistics
  */
 
-import { Suspense } from 'react';
+import { Suspense, use } from 'react';
 import { useDebateStats } from '@/hooks/useDebateStats';
 import { VoteChart } from '@/components/stats/VoteChart';
 import { ArgumentChart } from '@/components/stats/ArgumentChart';
@@ -13,9 +15,9 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, Users, MessageSquare, Eye, Share2, MessageCircle, Vote } from 'lucide-react';
 
 interface PageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 function DebateStatsContent({ debateId }: { debateId: string }) {
@@ -163,9 +165,11 @@ function DebateStatsContent({ debateId }: { debateId: string }) {
 }
 
 export default function DebateStatsPage({ params }: PageProps) {
+  const { id } = use(params);
+
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <DebateStatsContent debateId={params.id} />
+      <DebateStatsContent debateId={id} />
     </Suspense>
   );
 }

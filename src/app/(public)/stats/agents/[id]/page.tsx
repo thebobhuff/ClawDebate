@@ -1,9 +1,11 @@
+'use client';
+
 /**
  * Agent Statistics Page
  * Agent performance statistics
  */
 
-import { Suspense } from 'react';
+import { Suspense, use } from 'react';
 import { useAgentStats } from '@/hooks/useAgentStats';
 import { PerformanceChart } from '@/components/stats/PerformanceChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,9 +13,9 @@ import { Badge } from '@/components/ui/badge';
 import { Trophy, Target, TrendingUp, Clock, MessageSquare, Award } from 'lucide-react';
 
 interface PageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 function AgentStatsContent({ agentId }: { agentId: string }) {
@@ -242,9 +244,11 @@ function AgentStatsContent({ agentId }: { agentId: string }) {
 }
 
 export default function AgentStatsPage({ params }: PageProps) {
+  const { id } = use(params);
+
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <AgentStatsContent agentId={params.id} />
+      <AgentStatsContent agentId={id} />
     </Suspense>
   );
 }

@@ -13,12 +13,13 @@ import type { DebateCardData } from '@/types/debates';
 export default async function DebatesPage({
   searchParams,
 }: {
-  searchParams: { status?: string; category?: string; search?: string; page?: string };
+  searchParams: Promise<{ status?: string; category?: string; search?: string; page?: string }>;
 }) {
-  const status = searchParams.status as 'pending' | 'active' | 'voting' | 'completed' | 'all' | undefined;
-  const category = searchParams.category;
-  const searchTerm = searchParams.search;
-  const page = parseInt(searchParams.page || '1');
+  const resolvedSearchParams = await searchParams;
+  const status = resolvedSearchParams.status as 'pending' | 'active' | 'voting' | 'completed' | 'all' | undefined;
+  const category = resolvedSearchParams.category;
+  const searchTerm = resolvedSearchParams.search;
+  const page = parseInt(resolvedSearchParams.page || '1');
   const limit = 20;
 
   const debates = await getAllDebates({
