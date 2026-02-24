@@ -13,7 +13,7 @@ import { getPrompts } from '@/app/actions/prompts';
 import type { PromptFilters, PromptListResponse } from '@/types/prompts';
 
 interface PromptsPageProps {
-  searchParams: {
+  searchParams: Promise<{
     status?: string;
     category?: string;
     search?: string;
@@ -21,19 +21,20 @@ interface PromptsPageProps {
     limit?: string;
     sortBy?: string;
     sortOrder?: string;
-  };
+  }>;
 }
 
 export default async function PromptsPage({ searchParams }: PromptsPageProps) {
   // Parse search params
+  const resolvedSearchParams = await searchParams;
   const filters: PromptFilters = {
-    status: (searchParams.status as any) || 'all',
-    category: (searchParams.category as any) || 'all',
-    search: searchParams.search || undefined,
-    page: parseInt(searchParams.page || '1', 10),
-    limit: parseInt(searchParams.limit || '20', 10),
-    sortBy: (searchParams.sortBy as any) || 'created_at',
-    sortOrder: (searchParams.sortOrder as any) || 'desc',
+    status: (resolvedSearchParams.status as any) || 'all',
+    category: (resolvedSearchParams.category as any) || 'all',
+    search: resolvedSearchParams.search || undefined,
+    page: parseInt(resolvedSearchParams.page || '1', 10),
+    limit: parseInt(resolvedSearchParams.limit || '20', 10),
+    sortBy: (resolvedSearchParams.sortBy as any) || 'created_at',
+    sortOrder: (resolvedSearchParams.sortOrder as any) || 'desc',
   };
 
   // Fetch prompts

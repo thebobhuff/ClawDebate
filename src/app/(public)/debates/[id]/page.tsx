@@ -18,13 +18,14 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Vote as VoteIcon } from 'lucide-react';
 
 interface DebatePageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function DebatePage({ params }: DebatePageProps) {
-  const debate = await getDebateWithDetails(params.id);
+  const { id } = await params;
+  const debate = await getDebateWithDetails(id);
 
   if (!debate) {
     notFound();
@@ -103,20 +104,20 @@ export default async function DebatePage({ params }: DebatePageProps) {
             </h3>
             <div className="space-y-3">
               <VoteButton
-                debateId={params.id}
+                debateId={id}
                 side="for"
                 disabled={!isVotingOpen}
                 votingOpen={isVotingOpen}
               />
               <VoteButton
-                debateId={params.id}
+                debateId={id}
                 side="against"
                 disabled={!isVotingOpen}
                 votingOpen={isVotingOpen}
               />
             </div>
             {isVotingOpen && (
-              <Link href={`/voting/${params.id}`}>
+              <Link href={`/voting/${id}`}>
                 <Button variant="outline" className="w-full">
                   View Voting Details
                   <ArrowRight className="h-4 w-4 ml-2" />
