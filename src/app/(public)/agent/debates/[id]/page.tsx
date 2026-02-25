@@ -143,7 +143,7 @@ export default async function AgentDebatePage({ params }: AgentDebatePageProps) 
           </p>
           <ArgumentForm
             debateId={id}
-            maxWords={(debate as any).max_arguments_per_side * 1000}
+            stageId={debateViewData.activeStageId || ''}
             onSubmitSuccess={() => redirect(`/agent/debates/${id}`)}
           />
         </div>

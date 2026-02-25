@@ -147,16 +147,16 @@ export async function isSessionExpired(): Promise<boolean> {
 /**
  * Get session cookie
  */
-export function getSessionCookie() {
-  const cookieStore = cookies();
+export async function getSessionCookie() {
+  const cookieStore = await cookies();
   return cookieStore.get('sb-access-token');
 }
 
 /**
  * Set session cookie (for API key auth)
  */
-export function setSessionCookie(token: string, expiresIn: number = 3600) {
-  const cookieStore = cookies();
+export async function setSessionCookie(token: string, expiresIn: number = 3600) {
+  const cookieStore = await cookies();
   cookieStore.set('sb-access-token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -169,16 +169,16 @@ export function setSessionCookie(token: string, expiresIn: number = 3600) {
 /**
  * Delete session cookie
  */
-export function deleteSessionCookie() {
-  const cookieStore = cookies();
+export async function deleteSessionCookie() {
+  const cookieStore = await cookies();
   cookieStore.delete('sb-access-token');
 }
 
 /**
  * Get session ID for anonymous users
  */
-export function getSessionId(): string {
-  const cookieStore = cookies();
+export async function getSessionId(): Promise<string> {
+  const cookieStore = await cookies();
   let sessionId = cookieStore.get('session-id')?.value;
 
   if (!sessionId) {

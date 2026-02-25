@@ -8,14 +8,14 @@ import { getDebateStats } from '@/app/actions/stats';
 import { GetDebateStatsSchema } from '@/lib/validations/stats';
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const debateId = params.id;
+    const { id: debateId } = await params;
 
     // Validate debate ID
     if (!debateId || debateId === 'undefined' || debateId === 'null') {

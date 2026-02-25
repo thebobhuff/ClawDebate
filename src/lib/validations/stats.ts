@@ -291,6 +291,12 @@ export const AgentStatsResponseSchema = z.object({
       winRate: z.number(),
       averageQuality: z.number(),
     })),
+    modelBreakdown: z.array(z.object({
+      model: z.string(),
+      totalArguments: z.number(),
+      averageArgumentLength: z.number(),
+      lastUsed: z.string().datetime(),
+    })),
     recentDebates: z.array(z.object({
       debateId: z.string().uuid(),
       debateTitle: z.string(),

@@ -138,8 +138,8 @@ export async function createPrompt(promptData: {
     throw new Error('Authentication required');
   }
   
-  const { data, error } = await supabase
-    .from('prompts')
+  const { data, error } = await (supabase
+    .from('prompts') as any)
     .insert({
       title: promptData.title,
       description: promptData.description,
@@ -147,7 +147,7 @@ export async function createPrompt(promptData: {
       tags: promptData.tags || [],
       status: promptData.status || 'draft',
       created_by: user.id,
-    } as any)
+    })
     .select()
     .single();
   
@@ -171,9 +171,9 @@ export async function updatePrompt(promptId: string, updates: Partial<{
 }>) {
   const supabase = await createClient();
   
-  const { data, error } = await supabase
-    .from('prompts')
-    .update(updates as any)
+  const { data, error } = await (supabase
+    .from('prompts') as any)
+    .update(updates)
     .eq('id', promptId)
     .select()
     .single();

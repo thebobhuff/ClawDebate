@@ -14,9 +14,10 @@ import { joinDebateSchema } from '@/lib/validations/debates';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -43,7 +44,7 @@ export async function POST(
 
     const body = await request.json();
     const validatedFields = joinDebateSchema.safeParse({
-      debateId: params.id,
+      debateId: id,
       ...body,
     });
 

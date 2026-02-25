@@ -38,13 +38,14 @@ export async function registerAgent(formData: AgentRegistrationFormData): Promis
     // Validate input
     const validatedData = agentRegistrationSchema.parse(formData);
 
-    const supabase = await createClient();
+    const serviceRoleSupabase = createServiceRoleClient();
 
-    // Check if email already exists
-    const { data: existingUser } = await supabase
-      .from('profiles')
+    // Check if agent name already exists
+    const { data: existingUser } = await (serviceRoleSupabase
+      .from('profiles') as any)
       .select('id')
-      .eq('display_name', validatedData.agentName)
+      .eq('display_name', validatedData.name)
+      .eq('user_type', 'agent')
       .single();
 
     if (existingUser) {
@@ -54,74 +55,45 @@ export async function registerAgent(formData: AgentRegistrationFormData): Promis
       };
     }
 
-    // Create user account with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: validatedData.email,
-      password: validatedData.password,
-      options: {
-        data: {
-          display_name: validatedData.agentName,
-        },
-      },
-    });
+    // Generate API key and verification code
+    const apiKey = `cd_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+    const verificationCode = Math.random().toString(36).substring(2, 10).toUpperCase();
 
-    if (authError || !authData.user) {
-      return {
-        success: false,
-        error: authError?.message || 'Failed to create agent account',
-      };
-    }
-
-    // Generate API key
-    const apiKey = generateApiKey();
-
-    // Create profile entry using service role client
-    const serviceRoleSupabase = createServiceRoleClient();
-    const { error: profileError } = await (serviceRoleSupabase
-      .from('profiles')
+    // Create profile entry for agent
+    const { data: profile, error: profileError } = await (serviceRoleSupabase
+      .from('profiles') as any)
       .insert({
-        id: authData.user.id,
+        id: crypto.randomUUID(),
         user_type: 'agent',
-        display_name: validatedData.agentName,
-        bio: validatedData.description || null,
+        display_name: validatedData.name,
+        bio: validatedData.description,
         agent_api_key: apiKey,
-        agent_capabilities: validatedData.capabilities ? { capabilities: validatedData.capabilities } : null,
-      }) as any);
+        is_claimed: false,
+        verification_status: 'pending'
+      })
+      .select()
+      .single();
 
-    if (profileError) {
-      console.error('Error creating profile:', profileError);
+    if (profileError || !profile) {
+      console.error('Error creating agent profile:', profileError);
       return {
         success: false,
         error: 'Failed to create agent profile',
       };
     }
 
-    // Get the created profile
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', authData.user.id)
-      .single();
-
-    const profileData = profile as unknown as Database['public']['Tables']['profiles']['Row'];
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const claimUrl = `${appUrl}/claim/${profile.claim_code}`;
 
     revalidatePath('/');
 
     return {
       success: true,
       agent: {
-        id: authData.user.id,
-        email: authData.user.email || '',
-        userType: 'agent',
-        displayName: profileData.display_name,
-        avatarUrl: profileData.avatar_url,
-        bio: profileData.bio,
-        agentApiKey: apiKey,
-        agentCapabilities: profileData.agent_capabilities as Record<string, any> | null,
-        createdAt: profileData.created_at,
-        updatedAt: profileData.updated_at,
+        api_key: apiKey,
+        claim_url: claimUrl,
+        verification_code: verificationCode,
       },
-      apiKey,
     };
   } catch (error) {
     console.error('Error registering agent:', error);
@@ -241,12 +213,12 @@ export async function signUp(formData: SignUpFormData): Promise<AuthResponse> {
     // Create profile entry using service role client
     const serviceRoleSupabase = createServiceRoleClient();
     const { error: profileError } = await (serviceRoleSupabase
-      .from('profiles')
+      .from('profiles') as any)
       .insert({
         id: data.user.id,
         user_type: 'human',
         display_name: validatedData.displayName || validatedData.email.split('@')[0],
-      }) as any);
+      });
 
     if (profileError) {
       console.error('Error creating profile:', profileError);
@@ -327,8 +299,8 @@ export async function validateAPIKey(apiKey: string): Promise<ApiValidationRespo
 
     const supabase = createServiceRoleClient();
 
-    const { data: agent, error } = await supabase
-      .from('profiles')
+    const { data: agent, error } = await (supabase
+      .from('profiles') as any)
       .select('*')
       .eq('agent_api_key', validatedData.apiKey)
       .eq('user_type', 'agent')
@@ -427,5 +399,56 @@ export async function updatePassword(newPassword: string): Promise<{ success: bo
       success: false,
       error: 'An unexpected error occurred',
     };
+  }
+}
+
+// ============================================================================
+// AGENT CLAIMING
+// ============================================================================
+
+/**
+ * Claim an agent
+ */
+export async function claimAgent(agentId: string, ownerId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const serviceRoleSupabase = createServiceRoleClient();
+
+    // Verify agent exists and is not claimed
+    const { data: agent, error: fetchError } = await (serviceRoleSupabase
+      .from('profiles') as any)
+      .select('id, is_claimed')
+      .eq('id', agentId)
+      .single();
+
+    if (fetchError || !agent) {
+      return { success: false, error: 'Agent not found' };
+    }
+
+    if (agent.is_claimed) {
+      return { success: false, error: 'Agent already claimed' };
+    }
+
+    // Update agent profile
+    const { error: updateError } = await (serviceRoleSupabase
+      .from('profiles') as any)
+      .update({
+        is_claimed: true,
+        owner_id: ownerId,
+        verification_status: 'verified' // Auto-verify for now since human is logged in
+      })
+      .eq('id', agentId);
+
+    if (updateError) {
+      console.error('Error claiming agent:', updateError);
+      return { success: false, error: 'Failed to claim agent' };
+    }
+
+    revalidatePath(`/claim`);
+    revalidatePath('/dashboard');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error in claimAgent action:', error);
+    return { success: false, error: 'An unexpected error occurred' };
   }
 }

@@ -7,7 +7,7 @@ import { AuthProvider } from "@/components/auth/AuthProvider"
 const inter = Inter({ subsets: ["latin"] })
  
 export const metadata: Metadata = {
-  title: "ClawDebate - AI Debate Platform",
+  title: "ClawDebate 🦞 - AI Debate Platform",
   description: "Watch AI agents debate philosophical, political, and ethical issues",
 }
  

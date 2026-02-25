@@ -110,7 +110,7 @@ export async function getDebateStats(input: GetDebateStatsInput) {
 
     // Calculate debate statistics
     const stats = calculateDebateStats({
-      debate: debateResult.data as any,
+      debate: (debateResult as any).data,
       votes: votesResult.data || [],
       arguments: argumentsResult.data || [],
       participants: participantsResult.data || [],
@@ -183,7 +183,7 @@ export async function getAgentStats(input: GetAgentStatsInput) {
 
     // Calculate agent performance
     const performance = calculateAgentPerformance({
-      agent: agentResult.data as any,
+      agent: (agentResult as any).data,
       debates,
       votes: votesResult.data || [],
       arguments: argumentsResult.data || [],
@@ -196,6 +196,7 @@ export async function getAgentStats(input: GetAgentStatsInput) {
 
     // Calculate category breakdown
     const categoryBreakdown = calculateCategoryBreakdown(agentId, debates);
+    const modelBreakdown = calculateModelBreakdown(argumentsResult.data || []);
 
     // Get recent debates
     const recentDebates = includeRecentDebates
@@ -207,6 +208,7 @@ export async function getAgentStats(input: GetAgentStatsInput) {
         performance,
         performanceOverTime,
         categoryBreakdown,
+        modelBreakdown,
         recentDebates: recentDebates as any,
       },
       generatedAt: new Date(),
@@ -276,6 +278,37 @@ function getRecentAgentDebates(agentId: string, debates: any[], limit: number) {
         createdAt: debate.created_at,
       };
     });
+}
+
+function calculateModelBreakdown(argumentsData: any[]) {
+  const modelMap: Record<string, { totalArguments: number; totalLength: number; lastUsedTs: number }> = {};
+
+  argumentsData.forEach((argument) => {
+    const model = argument.model || 'unknown/legacy';
+    const createdAt = new Date(argument.created_at).getTime();
+
+    if (!modelMap[model]) {
+      modelMap[model] = {
+        totalArguments: 0,
+        totalLength: 0,
+        lastUsedTs: 0,
+      };
+    }
+
+    modelMap[model].totalArguments += 1;
+    modelMap[model].totalLength += argument.content?.length || 0;
+    modelMap[model].lastUsedTs = Math.max(modelMap[model].lastUsedTs, createdAt);
+  });
+
+  return Object.entries(modelMap)
+    .map(([model, entry]) => ({
+      model,
+      totalArguments: entry.totalArguments,
+      averageArgumentLength:
+        entry.totalArguments > 0 ? entry.totalLength / entry.totalArguments : 0,
+      lastUsed: new Date(entry.lastUsedTs || Date.now()),
+    }))
+    .sort((a, b) => b.totalArguments - a.totalArguments);
 }
 
 // ============================================================================
@@ -483,7 +516,7 @@ export async function getRecentActivity(input: Partial<GetRecentActivityInput> =
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    debates?.forEach((debate) => {
+    debates?.forEach((debate: any) => {
       activities.push({
         id: `debate-${debate.id}`,
         type: 'debate_created',
@@ -504,17 +537,17 @@ export async function getRecentActivity(input: Partial<GetRecentActivityInput> =
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    argumentsData?.forEach((arg) => {
+    argumentsData?.forEach((arg: any) => {
       activities.push({
-        id: `argument-${(arg as any).id}`,
+        id: `argument-${arg.id}`,
         type: 'argument_posted',
         description: `New argument posted`,
-        actorId: (arg as any).agent_id,
-        actorName: (arg as any).profiles?.display_name || 'Unknown',
-        targetId: (arg as any).debate_id,
+        actorId: arg.agent_id,
+        actorName: arg.profiles?.display_name || 'Unknown',
+        targetId: arg.debate_id,
         targetType: 'debate',
-        targetName: (arg as any).debate_id,
-        createdAt: (arg as any).created_at,
+        targetName: arg.debate_id,
+        createdAt: arg.created_at,
       });
     });
 
@@ -525,17 +558,17 @@ export async function getRecentActivity(input: Partial<GetRecentActivityInput> =
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    votes?.forEach((vote) => {
+    votes?.forEach((vote: any) => {
       activities.push({
-        id: `vote-${(vote as any).id}`,
+        id: `vote-${vote.id}`,
         type: 'vote_cast',
-        description: `Vote cast for ${(vote as any).side}`,
-        actorId: (vote as any).user_id,
+        description: `Vote cast for ${vote.side}`,
+        actorId: vote.user_id,
         actorName: 'User',
-        targetId: (vote as any).debate_id,
+        targetId: vote.debate_id,
         targetType: 'debate',
-        targetName: (vote as any).debate_id,
-        createdAt: (vote as any).created_at,
+        targetName: vote.debate_id,
+        createdAt: vote.created_at,
       });
     });
 
@@ -547,17 +580,17 @@ export async function getRecentActivity(input: Partial<GetRecentActivityInput> =
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    agents?.forEach((agent) => {
+    agents?.forEach((agent: any) => {
       activities.push({
-        id: `agent-${(agent as any).id}`,
+        id: `agent-${agent.id}`,
         type: 'agent_registered',
-        description: `New agent "${(agent as any).display_name}" registered`,
-        actorId: (agent as any).id,
-        actorName: (agent as any).display_name,
-        targetId: (agent as any).id,
+        description: `New agent "${agent.display_name}" registered`,
+        actorId: agent.id,
+        actorName: agent.display_name,
+        targetId: agent.id,
         targetType: 'agent',
-        targetName: (agent as any).display_name,
-        createdAt: (agent as any).created_at,
+        targetName: agent.display_name,
+        createdAt: agent.created_at,
       });
     });
 

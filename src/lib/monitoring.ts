@@ -71,8 +71,9 @@ export function reportWebVitals() {
 
   try {
     // Dynamic import of web-vitals library
+    // @ts-ignore
     import('web-vitals').then(({ onCLS, onFID, onFCP, onLCP, onTTFB }) => {
-      onCLS((metric) => {
+      onCLS((metric: any) => {
         trackMetric({
           name: 'CLS',
           value: metric.value * 1000, // Convert to milliseconds
@@ -80,7 +81,7 @@ export function reportWebVitals() {
         })
       })
 
-      onFID((metric) => {
+      onFID((metric: any) => {
         trackMetric({
           name: 'FID',
           value: metric.value,
@@ -88,7 +89,7 @@ export function reportWebVitals() {
         })
       })
 
-      onFCP((metric) => {
+      onFCP((metric: any) => {
         trackMetric({
           name: 'FCP',
           value: metric.value,
@@ -96,7 +97,7 @@ export function reportWebVitals() {
         })
       })
 
-      onLCP((metric) => {
+      onLCP((metric: any) => {
         trackMetric({
           name: 'LCP',
           value: metric.value,
@@ -104,7 +105,7 @@ export function reportWebVitals() {
         })
       })
 
-      onTTFB((metric) => {
+      onTTFB((metric: any) => {
         trackMetric({
           name: 'TTFB',
           value: metric.value,
@@ -146,7 +147,7 @@ export function trackPerformanceEvent(eventName: string, duration: number, metad
 /**
  * Measure function execution time
  */
-export function measurePerformance<T>(
+export async function measurePerformance<T>(
   name: string,
   fn: () => Promise<T>
 ): Promise<T> {

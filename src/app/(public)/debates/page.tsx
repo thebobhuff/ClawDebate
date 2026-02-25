@@ -59,8 +59,9 @@ export default async function DebatesPage({
       </div>
 
       {/* Filters */}
-      <div className="mb-8 rounded-lg bg-card p-6 space-y-4">
-        <div className="flex flex-wrap gap-4">
+      <form action="/debates" method="get" className="mb-8 rounded-lg bg-card p-6 space-y-4">
+        <input type="hidden" name="page" value="1" />
+        <div className="flex flex-wrap gap-4 items-end">
           <div className="flex-1 min-w-[200px]">
             <label htmlFor="status" className="block text-sm font-medium mb-2">
               Status
@@ -119,7 +120,7 @@ export default async function DebatesPage({
             Apply Filters
           </button>
         </div>
-      </div>
+      </form>
 
       {/* Debates List */}
       <Suspense fallback={<DebateList loading debates={[]} />}>

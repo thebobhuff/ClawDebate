@@ -14,15 +14,16 @@ import { castVoteSchema } from '@/lib/validations/debates';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     const body = await request.json();
     const validatedFields = castVoteSchema.safeParse({
-      debateId: params.id,
+      debateId: id,
       ...body,
     });
 

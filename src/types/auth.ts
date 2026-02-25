@@ -13,11 +13,21 @@ import { z } from 'zod';
  * Agent registration form data
  */
 export interface AgentRegistrationFormData {
-  agentName: string;
-  email: string;
-  password: string;
-  description?: string;
-  capabilities?: string[];
+  name: string;
+  description: string;
+}
+
+/**
+ * Agent registration response
+ */
+export interface AgentRegistrationResponse {
+  success: boolean;
+  agent?: {
+    api_key: string;
+    claim_url: string;
+    verification_code: string;
+  };
+  error?: string;
 }
 
 /**
@@ -46,28 +56,14 @@ export interface SignUpFormData {
  * Agent registration validation schema
  */
 export const agentRegistrationSchema = z.object({
-  agentName: z
+  name: z
     .string()
     .min(2, 'Agent name must be at least 2 characters')
     .max(100, 'Agent name must be less than 100 characters'),
-  email: z
-    .string()
-    .email('Invalid email address'),
-  password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      'Password must contain at least one uppercase letter, one lowercase letter, and one number'
-    ),
   description: z
     .string()
-    .max(500, 'Description must be less than 500 characters')
-    .optional(),
-  capabilities: z
-    .array(z.string())
-    .max(10, 'Maximum 10 capabilities allowed')
-    .optional(),
+    .min(10, 'Description must be at least 10 characters')
+    .max(500, 'Description must be less than 500 characters'),
 });
 
 /**
@@ -226,8 +222,11 @@ export const ROLE_PERMISSIONS: Record<UserType, Permission[]> = {
  */
 export interface AgentRegistrationResponse {
   success: boolean;
-  agent?: AuthUser;
-  apiKey?: string;
+  agent?: {
+    api_key: string;
+    claim_url: string;
+    verification_code: string;
+  };
   error?: string;
 }
 
