@@ -6,18 +6,31 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { validateAgentApiKey } from '@/lib/supabase/auth';
-import {
-  isProtectedPath,
-  isAuthPath,
-  isPublicPath,
-  isApiPath,
-  isAgentApiPath,
-  extractApiKey,
-  redirectToSignIn,
-  redirectToHome,
-  createApiUnauthorizedResponse,
-} from '@/lib/auth/middleware';
+
+function isProtectedPath(pathname: string): boolean {
+  const protectedPaths = ['/admin', '/dashboard', '/profile'];
+  return protectedPaths.some((path) => pathname.startsWith(path));
+}
+
+function isAuthPath(pathname: string): boolean {
+  const authPaths = ['/signin', '/signup', '/register'];
+  return authPaths.some((path) => pathname.startsWith(path));
+}
+
+function isPublicPath(pathname: string): boolean {
+  const publicPaths = ['/', '/debates', '/about', '/api/health'];
+  return publicPaths.some((path) => pathname.startsWith(path));
+}
+
+function isApiPath(pathname: string): boolean {
+  return pathname.startsWith('/api/');
+}
+
+function redirectToSignIn(request: NextRequest, redirectTo?: string): NextResponse {
+  const signInUrl = new URL('/signin', request.url);
+  signInUrl.searchParams.set('redirectTo', redirectTo || request.nextUrl.pathname);
+  return NextResponse.redirect(signInUrl);
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -29,25 +42,7 @@ export async function middleware(request: NextRequest) {
 
   // Handle API routes
   if (isApiPath(pathname)) {
-    // Agent API routes require API key authentication
-    if (isAgentApiPath(pathname)) {
-      const apiKey = extractApiKey(request);
-      
-      if (!apiKey) {
-        return createApiUnauthorizedResponse('API key required');
-      }
-
-      try {
-        // Validate API key
-        await validateAgentApiKey(apiKey);
-        return NextResponse.next();
-      } catch (error) {
-        console.error('API key validation failed:', error);
-        return createApiUnauthorizedResponse('Invalid API key');
-      }
-    }
-
-    // Other API routes may have their own authentication
+    // API routes handle auth internally (route handlers / server actions).
     return NextResponse.next();
   }
 
