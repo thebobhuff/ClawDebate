@@ -59,7 +59,7 @@ export function AdminNav() {
     <nav className="flex flex-col h-full bg-muted border-r">
       {/* Logo/Brand */}
       <div className="p-6 border-b">
-        <h1 className="text-2xl font-bold text-primary">ClawDebate</h1>
+        <h1 className="text-2xl font-bold text-primary">ClawDebate 🦞</h1>
         <p className="text-sm text-muted-foreground">Admin Panel</p>
       </div>
 

@@ -85,10 +85,11 @@ export async function getDebateById(debateId: string): Promise<Debate | null> {
 /**
  * Get debate with full details (arguments, participants, votes)
  */
-export async function getDebateWithDetails(debateId: string) {
+export async function getDebateWithDetails(debate_id: string) {
   const supabase = await createClient();
   
-  const { data, error } = await supabase
+  // Fetch debate with standard relationships
+  const { data: debate, error: debateError } = await supabase
     .from('debates')
     .select(`
       *,
@@ -103,15 +104,36 @@ export async function getDebateWithDetails(debateId: string) {
         agent:profiles (display_name, avatar_url)
       )
     `)
-    .eq('id', debateId)
+    .eq('id', debate_id)
     .single();
   
-  if (error) {
-    console.error('Error fetching debate details:', error);
+  if (debateError) {
+    console.error('Error fetching debate details:', JSON.stringify(debateError, null, 2));
     return null;
   }
+
+  // Fetch stages separately since PostgREST schema cache might not be updated
+  let stages: any[] = [];
+  try {
+    const { data: stagesData, error: stagesError } = await (supabase
+      .from('debate_stages') as any)
+      .select('*')
+      .eq('debate_id', debate_id)
+      .order('stage_order', { ascending: true });
+
+    if (stagesError) {
+      console.error('Error fetching debate stages:', JSON.stringify(stagesError, null, 2));
+    } else {
+      stages = stagesData || [];
+    }
+  } catch (err) {
+    console.error('Exception fetching debate stages:', err);
+  }
   
-  return data;
+  return {
+    ...(debate as any),
+    stages: stages
+  };
 }
 
 /**
@@ -127,8 +149,8 @@ export async function createDebate(debateData: {
 }) {
   const supabase = await createClient();
   
-  const { data, error } = await supabase
-    .from('debates')
+  const { data, error } = await (supabase
+    .from('debates') as any)
     .insert({
       prompt_id: debateData.promptId,
       title: debateData.title,
@@ -137,7 +159,7 @@ export async function createDebate(debateData: {
       argument_submission_deadline: debateData.argumentSubmissionDeadline?.toISOString() || null,
       voting_deadline: debateData.votingDeadline?.toISOString() || null,
       status: 'pending',
-    } as any)
+    })
     .select()
     .single();
   
@@ -164,9 +186,9 @@ export async function updateDebate(debateId: string, updates: Partial<{
 }>) {
   const supabase = await createClient();
   
-  const { data, error } = await supabase
-    .from('debates')
-    .update(updates as any)
+  const { data, error } = await (supabase
+    .from('debates') as any)
+    .update(updates)
     .eq('id', debateId)
     .select()
     .single();
@@ -303,6 +325,65 @@ export async function getDebateVoteCounts(debateId: string) {
 // ============================================================================
 // DEBATE STATUS MANAGEMENT
 // ============================================================================
+
+/**
+ * Submit an argument to a debate
+ */
+export async function submitArgument(data: {
+  debateId: string;
+  stageId: string;
+  agentId: string;
+  content: string;
+  model: string;
+  side: 'for' | 'against';
+}) {
+  const serviceRoleSupabase = createServiceRoleClient();
+  
+  // Double-check the daily limit (redundancy for verification flow)
+  const today = new Date().toISOString().split('T')[0];
+  const { data: existingToday } = await serviceRoleSupabase
+    .from('arguments')
+    .select('id')
+    .eq('debate_id', data.debateId)
+    .eq('stage_id', data.stageId)
+    .eq('agent_id', data.agentId)
+    .gte('created_at', today)
+    .limit(1);
+
+  if (existingToday && existingToday.length > 0) {
+    throw new Error('Agent can only post once a day per debate stage');
+  }
+
+  // Get existing arguments for this side
+  const { data: agentArguments } = await serviceRoleSupabase
+    .from('arguments')
+    .select('id')
+    .eq('debate_id', data.debateId)
+    .eq('side', data.side);
+
+  const argumentOrder = (agentArguments?.length || 0) + 1;
+
+  // Submit argument
+  const { data: argument, error } = await (serviceRoleSupabase
+    .from('arguments')
+    .insert({
+      debate_id: data.debateId,
+      stage_id: data.stageId,
+      agent_id: data.agentId,
+      side: data.side,
+      content: data.content,
+      model: data.model,
+      argument_order: argumentOrder,
+    } as any)
+    .select()
+    .single());
+
+  if (error) {
+    throw error;
+  }
+  
+  return argument;
+}
 
 /**
  * Start debate (change status to active)

@@ -7,6 +7,7 @@ import { notFound } from 'next/navigation';
 import { getDebateWithDetails } from '@/lib/supabase/debates';
 import { DebateView } from '@/components/debates/DebateView';
 import { DebateTimeline } from '@/components/debates/DebateTimeline';
+import { ShareButtons } from '@/components/debates/ShareButtons';
 import { VoteResults } from '@/components/voting/VoteResults';
 import { VotingInstructions } from '@/components/voting/VotingInstructions';
 import { VoteButton } from '@/components/debates/VoteButton';
@@ -129,27 +130,7 @@ export default async function DebatePage({ params }: DebatePageProps) {
           {/* Share */}
           <div className="rounded-lg bg-card p-6 space-y-4">
             <h3 className="text-lg font-semibold">Share This Debate</h3>
-            <div className="space-y-2">
-              <button
-                onClick={() => navigator.clipboard.writeText(window.location.href)}
-                className="w-full rounded-md border border-input bg-background px-4 py-2 text-sm hover:bg-accent"
-              >
-                Copy Link
-              </button>
-              <button
-                onClick={() => {
-                  if (navigator.share) {
-                    navigator.share({
-                      title: (debate as any).title,
-                      url: window.location.href,
-                    });
-                  }
-                }}
-                className="w-full rounded-md border border-input bg-background px-4 py-2 text-sm hover:bg-accent"
-              >
-                Share
-              </button>
-            </div>
+            <ShareButtons title={(debate as any).title} />
           </div>
         </div>
       </div>

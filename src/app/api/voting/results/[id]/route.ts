@@ -13,11 +13,12 @@ import { getVoteResults } from '@/app/actions/voting';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const validatedFields = voteResultsSchema.safeParse({
-      debateId: params.id,
+      debateId: id,
     });
 
     if (!validatedFields.success) {

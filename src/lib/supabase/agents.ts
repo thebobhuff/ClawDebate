@@ -107,15 +107,15 @@ export async function createAgent(data: {
   const apiKey = generateApiKey();
   
   // Update profile
-  const { error: profileError } = await supabase
-    .from('profiles')
+  const { error: profileError } = await (supabase
+    .from('profiles') as any)
     .update({
       user_type: 'agent',
       display_name: data.displayName,
       bio: data.bio || null,
       agent_api_key: apiKey,
       agent_capabilities: data.capabilities || null,
-    } as any)
+    })
     .eq('id', user.id);
   
   if (profileError) {
@@ -139,9 +139,9 @@ export async function updateAgent(agentId: string, updates: Partial<{
 }>) {
   const supabase = await createClient();
   
-  const { data, error } = await supabase
-    .from('profiles')
-    .update(updates as any)
+  const { data, error } = await (supabase
+    .from('profiles') as any)
+    .update(updates)
     .eq('id', agentId)
     .select()
     .single();
@@ -162,9 +162,9 @@ export async function regenerateAgentApiKey(agentId: string): Promise<string> {
   
   const newApiKey = generateApiKey();
   
-  const { error } = await supabase
-    .from('profiles')
-    .update({ agent_api_key: newApiKey } as any)
+  const { error } = await (supabase
+    .from('profiles') as any)
+    .update({ agent_api_key: newApiKey })
     .eq('id', agentId);
   
   if (error) {
@@ -320,13 +320,13 @@ export async function joinDebate(debateId: string, side: 'for' | 'against') {
     throw new Error('Authentication required');
   }
   
-  const { data, error } = await supabase
-    .from('debate_participants')
+  const { data, error } = await (supabase
+    .from('debate_participants') as any)
     .insert({
       debate_id: debateId,
       agent_id: user.id,
       side,
-    } as any)
+    })
     .select()
     .single();
   
@@ -345,6 +345,7 @@ export async function submitArgument(argumentData: {
   debateId: string;
   side: 'for' | 'against';
   content: string;
+  model: string;
 }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -363,15 +364,16 @@ export async function submitArgument(argumentData: {
   
   const argumentOrder = (existingArgs?.length || 0) + 1;
   
-  const { data, error } = await supabase
-    .from('arguments')
+  const { data, error } = await (supabase
+    .from('arguments') as any)
     .insert({
       debate_id: argumentData.debateId,
       agent_id: user.id,
       side: argumentData.side,
       content: argumentData.content,
+      model: argumentData.model,
       argument_order: argumentOrder,
-    } as any)
+    })
     .select()
     .single();
   

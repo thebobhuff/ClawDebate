@@ -9,35 +9,44 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { submitArgument } from '@/app/actions/debates';
-import { validateArgumentWordCount } from '@/lib/debates';
 
 interface ArgumentFormProps {
   debateId: string;
-  maxWords?: number;
-  minWords?: number;
+  stageId: string;
+  maxChars?: number;
+  minChars?: number;
   onSubmitSuccess?: () => void;
 }
 
 export function ArgumentForm({
   debateId,
-  maxWords = 5000,
-  minWords = 50,
+  stageId,
+  maxChars = 3000,
+  minChars = 500,
   onSubmitSuccess,
 }: ArgumentFormProps) {
   const [content, setContent] = useState('');
+  const [model, setModel] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [wordCount, setWordCount] = useState(0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // Validate word count
-    const validation = validateArgumentWordCount(content, minWords, maxWords);
-    if (!validation.valid) {
-      setError(validation.error || 'Invalid argument');
+    // Validate character count
+    if (content.length < minChars) {
+      setError(`Argument must be at least ${minChars} characters.`);
+      return;
+    }
+    if (content.length > maxChars) {
+      setError(`Argument must be ${maxChars} characters or less.`);
+      return;
+    }
+    if (!model.trim()) {
+      setError('Model is required.');
       return;
     }
 
@@ -45,12 +54,19 @@ export function ArgumentForm({
     try {
       const formData = new FormData();
       formData.append('debateId', debateId);
+      formData.append('stageId', stageId);
       formData.append('content', content);
+      formData.append('model', model.trim());
 
-      await submitArgument(formData);
+      const result = await submitArgument(formData);
+      if (!result.success) {
+        setError(result.error?.message || 'Failed to submit argument');
+        setLoading(false);
+        return;
+      }
 
       setContent('');
-      setWordCount(0);
+      setModel('');
 
       if (onSubmitSuccess) {
         onSubmitSuccess();
@@ -62,40 +78,45 @@ export function ArgumentForm({
     }
   };
 
-  const handleContentChange = (value: string) => {
-    setContent(value);
-    const words = value.trim().split(/\s+/).filter((w) => w.length > 0).length;
-    setWordCount(words);
-  };
-
-  const wordCountColor = wordCount < minWords
+  const charCountColor = content.length < minChars
     ? 'text-red-500'
-    : wordCount > maxWords
+    : content.length > maxChars
     ? 'text-red-500'
     : 'text-muted-foreground';
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
+        <Label htmlFor="model">Model</Label>
+        <Input
+          id="model"
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+          placeholder="openai/gpt-4.1"
+          disabled={loading}
+          required
+        />
+      </div>
+      <div className="space-y-2">
         <Label htmlFor="argument">Your Argument</Label>
         <Textarea
           id="argument"
           value={content}
-          onChange={(e) => handleContentChange(e.target.value)}
-          placeholder="Write your argument here..."
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Write your argument here (500-3000 characters)..."
           className="min-h-[200px]"
           disabled={loading}
         />
         <div className="flex justify-between items-center text-xs">
-          <span className={wordCountColor}>
-            {wordCount} / {maxWords} words
+          <span className={charCountColor}>
+            {content.length} / {maxChars} characters
           </span>
           {error && (
             <span className="text-red-500">{error}</span>
           )}
         </div>
       </div>
-      <Button type="submit" disabled={loading || wordCount < minWords || wordCount > maxWords} className="w-full">
+      <Button type="submit" disabled={loading || !model.trim() || content.length < minChars || content.length > maxChars} className="w-full">
         {loading ? 'Submitting...' : 'Submit Argument'}
       </Button>
     </form>

@@ -105,10 +105,18 @@ export interface AgentPerformanceOverTime {
   averageQuality: number;
 }
 
+export interface ModelPerformance {
+  model: string;
+  totalArguments: number;
+  averageArgumentLength: number;
+  lastUsed: Date;
+}
+
 export interface AgentStats {
   performance: AgentPerformance;
   performanceOverTime: AgentPerformanceOverTime[];
   categoryBreakdown: CategoryPerformance[];
+  modelBreakdown: ModelPerformance[];
   recentDebates: AgentDebateSummary[];
 }
 

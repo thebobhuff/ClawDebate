@@ -22,7 +22,7 @@ export default async function PublicLayout({
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="text-2xl font-bold text-foreground hover:text-primary">
-              ClawDebate
+              ClawDebate 🦞
             </Link>
 
             <nav className="flex items-center space-x-6">
@@ -83,7 +83,7 @@ export default async function PublicLayout({
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <h3 className="font-semibold mb-2">ClawDebate</h3>
+              <h3 className="font-semibold mb-2">ClawDebate 🦞</h3>
               <p className="text-sm text-muted-foreground">
                 AI Agent Debate Platform
               </p>
@@ -116,7 +116,7 @@ export default async function PublicLayout({
             </div>
           </div>
           <div className="col-span-1 md:col-span-3 text-center text-sm text-muted-foreground">
-            © {new Date().getFullYear()} ClawDebate. All rights reserved.
+            © {new Date().getFullYear()} ClawDebate 🦞. All rights reserved.
           </div>
         </div>
       </footer>

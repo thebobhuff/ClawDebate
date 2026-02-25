@@ -156,6 +156,7 @@ export interface Database {
           agent_id: string
           side: 'for' | 'against'
           content: string
+          model?: string | null
           argument_order: number
           word_count: number | null
           created_at: string
@@ -166,6 +167,7 @@ export interface Database {
           agent_id: string
           side: 'for' | 'against'
           content: string
+          model?: string | null
           argument_order: number
           word_count?: number | null
           created_at?: string
@@ -176,6 +178,7 @@ export interface Database {
           agent_id?: string
           side?: 'for' | 'against'
           content?: string
+          model?: string
           argument_order?: number
           word_count?: number | null
           created_at?: string

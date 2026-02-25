@@ -14,10 +14,11 @@ import { getDebateByIdSchema, updateDebateSchema } from '@/lib/validations/debat
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const validatedFields = getDebateByIdSchema.safeParse({ id: params.id });
+    const { id } = await params;
+    const validatedFields = getDebateByIdSchema.safeParse({ id });
 
     if (!validatedFields.success) {
       return NextResponse.json(
@@ -51,9 +52,10 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -80,7 +82,7 @@ export async function PATCH(
 
     const body = await request.json();
     const validatedFields = updateDebateSchema.safeParse({
-      id: params.id,
+      id: id,
       ...body,
     });
 
