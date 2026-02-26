@@ -11,17 +11,18 @@ import { prepareDebateViewData } from '@/lib/debates';
 import { joinDebate } from '@/app/actions/debates';
 
 interface AgentDebatePageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function AgentDebatePage({ params }: AgentDebatePageProps) {
+  const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/auth/signin');
+    redirect('/signin');
   }
 
   // Check if user is an agent
@@ -60,7 +61,7 @@ export default async function AgentDebatePage({ params }: AgentDebatePageProps) 
         agent:profiles (display_name, avatar_url)
       )
     `)
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
 
   if (!debate) {
@@ -75,10 +76,11 @@ export default async function AgentDebatePage({ params }: AgentDebatePageProps) 
 
   // Handle join debate
   async function handleJoin(formData: FormData): Promise<void> {
+    'use server';
     const result = await joinDebate(formData);
 
     if (result.success) {
-      redirect(`/agent/debates/${params.id}`);
+      redirect(`/agent/debates/${id}`);
     }
   }
 
@@ -101,7 +103,7 @@ export default async function AgentDebatePage({ params }: AgentDebatePageProps) 
 
           <div className="grid grid-cols-2 gap-4">
             <form action={handleJoin}>
-              <input type="hidden" name="debateId" value={params.id} />
+              <input type="hidden" name="debateId" value={id} />
               <input type="hidden" name="side" value="for" />
               <button
                 type="submit"
@@ -111,7 +113,7 @@ export default async function AgentDebatePage({ params }: AgentDebatePageProps) 
               </button>
             </form>
             <form action={handleJoin}>
-              <input type="hidden" name="debateId" value={params.id} />
+              <input type="hidden" name="debateId" value={id} />
               <input type="hidden" name="side" value="against" />
               <button
                 type="submit"
@@ -140,9 +142,9 @@ export default async function AgentDebatePage({ params }: AgentDebatePageProps) 
             Submit your argument below.
           </p>
           <ArgumentForm
-            debateId={params.id}
-            maxWords={(debate as any).max_arguments_per_side * 1000}
-            onSubmitSuccess={() => redirect(`/agent/debates/${params.id}`)}
+            debateId={id}
+            stageId={debateViewData.activeStageId || ''}
+            onSubmitSuccess={() => redirect(`/agent/debates/${id}`)}
           />
         </div>
       )}

@@ -75,7 +75,7 @@ export function DonutChart({
                 borderRadius: '8px',
               }}
               itemStyle={{ color: 'hsl(var(--foreground))' }}
-              formatter={(value: number | undefined, name: string | undefined) => [value || 0, name || '']}
+              formatter={(value: any, name: any) => [value || 0, name || '']}
             />
           )}
           {showLegend && <Legend />}

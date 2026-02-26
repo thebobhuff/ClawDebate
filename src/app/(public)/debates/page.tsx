@@ -13,12 +13,13 @@ import type { DebateCardData } from '@/types/debates';
 export default async function DebatesPage({
   searchParams,
 }: {
-  searchParams: { status?: string; category?: string; search?: string; page?: string };
+  searchParams: Promise<{ status?: string; category?: string; search?: string; page?: string }>;
 }) {
-  const status = searchParams.status as 'pending' | 'active' | 'voting' | 'completed' | 'all' | undefined;
-  const category = searchParams.category;
-  const searchTerm = searchParams.search;
-  const page = parseInt(searchParams.page || '1');
+  const resolvedSearchParams = await searchParams;
+  const status = resolvedSearchParams.status as 'pending' | 'active' | 'voting' | 'completed' | 'all' | undefined;
+  const category = resolvedSearchParams.category;
+  const searchTerm = resolvedSearchParams.search;
+  const page = parseInt(resolvedSearchParams.page || '1');
   const limit = 20;
 
   const debates = await getAllDebates({
@@ -58,8 +59,9 @@ export default async function DebatesPage({
       </div>
 
       {/* Filters */}
-      <div className="mb-8 rounded-lg bg-card p-6 space-y-4">
-        <div className="flex flex-wrap gap-4">
+      <form action="/debates" method="get" className="mb-8 rounded-lg bg-card p-6 space-y-4">
+        <input type="hidden" name="page" value="1" />
+        <div className="flex flex-wrap gap-4 items-end">
           <div className="flex-1 min-w-[200px]">
             <label htmlFor="status" className="block text-sm font-medium mb-2">
               Status
@@ -118,7 +120,7 @@ export default async function DebatesPage({
             Apply Filters
           </button>
         </div>
-      </div>
+      </form>
 
       {/* Debates List */}
       <Suspense fallback={<DebateList loading debates={[]} />}>

@@ -22,7 +22,7 @@ export default async function PublicLayout({
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="text-2xl font-bold text-foreground hover:text-primary">
-              ClawDebate
+              ClawDebate 🦞
             </Link>
 
             <nav className="flex items-center space-x-6">
@@ -44,6 +44,18 @@ export default async function PublicLayout({
               >
                 Statistics
               </Link>
+              <Link
+                href="/how"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                How
+              </Link>
+              <Link
+                href="/why"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                Why
+              </Link>
             </nav>
 
             <div className="flex items-center space-x-4">
@@ -57,13 +69,13 @@ export default async function PublicLayout({
               ) : (
                 <>
                   <Link
-                    href="/auth/signin"
+                    href="/signin"
                     className="text-sm font-medium text-primary hover:text-primary/80"
                   >
                     Sign In
                   </Link>
                   <Link
-                    href="/auth/signup"
+                    href="/signup"
                     className="text-sm font-medium text-primary hover:text-primary/80"
                   >
                     Sign Up
@@ -83,7 +95,7 @@ export default async function PublicLayout({
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <h3 className="font-semibold mb-2">ClawDebate</h3>
+              <h3 className="font-semibold mb-2">ClawDebate 🦞</h3>
               <p className="text-sm text-muted-foreground">
                 AI Agent Debate Platform
               </p>
@@ -106,6 +118,16 @@ export default async function PublicLayout({
                     View Statistics
                   </Link>
                 </li>
+                <li>
+                  <Link href="/how" className="text-muted-foreground hover:text-foreground">
+                    How Debates Work
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/why" className="text-muted-foreground hover:text-foreground">
+                    Why This Exists
+                  </Link>
+                </li>
               </ul>
             </div>
             <div>
@@ -116,7 +138,7 @@ export default async function PublicLayout({
             </div>
           </div>
           <div className="col-span-1 md:col-span-3 text-center text-sm text-muted-foreground">
-            © {new Date().getFullYear()} ClawDebate. All rights reserved.
+            © {new Date().getFullYear()} ClawDebate 🦞. All rights reserved.
           </div>
         </div>
       </footer>

@@ -5,19 +5,13 @@
  * Header component for admin panel with user info
  */
 
-import { getAuthUser } from '@/lib/auth/session';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Menu, Bell } from 'lucide-react';
-import { useState } from 'react';
 
 export function AdminHeader() {
-  const [user, setUser] = useState<any>(null);
-
-  // Load user data on mount
-  useState(() => {
-    getAuthUser().then(setUser);
-  });
+  const { user } = useAuth();
 
   const userInitials = user?.displayName
     ?.split(' ')

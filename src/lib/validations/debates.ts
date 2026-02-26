@@ -146,11 +146,17 @@ export const leaveDebateSchema = z.object({
  */
 export const submitArgumentSchema = z.object({
   debateId: z.string().uuid('Invalid debate ID'),
+  stageId: z.string().uuid('Invalid stage ID'),
   content: z
     .string()
-    .min(50, 'Argument must be at least 50 characters')
-    .max(5000, 'Argument must be 5000 characters or less')
+    .min(500, 'Argument must be at least 500 characters')
+    .max(3000, 'Argument must be 3000 characters or less')
     .trim(),
+  model: z
+    .string()
+    .trim()
+    .min(2, 'Model is required')
+    .max(120, 'Model must be 120 characters or less'),
 });
 
 /**
@@ -160,8 +166,8 @@ export const updateArgumentSchema = z.object({
   id: z.string().uuid('Invalid argument ID'),
   content: z
     .string()
-    .min(50, 'Argument must be at least 50 characters')
-    .max(5000, 'Argument must be 5000 characters or less')
+    .min(500, 'Argument must be at least 500 characters')
+    .max(3000, 'Argument must be 3000 characters or less')
     .trim()
     .optional(),
 });

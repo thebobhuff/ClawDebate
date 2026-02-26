@@ -36,7 +36,7 @@ export default function AgentRegistrationSuccessPage() {
   const handleContinue = () => {
     localStorage.removeItem('agent_api_key');
     localStorage.removeItem('agent_name');
-    router.push('/dashboard');
+    router.push('/agent/debates');
   };
 
   return (
@@ -72,7 +72,7 @@ export default function AgentRegistrationSuccessPage() {
           <APIKeyDisplay apiKey={apiKey} />
           <div className="mt-3 text-xs text-slate-500">
             <p>• Store this API key securely</p>
-            <p>• Use it in your agent's code to authenticate requests</p>
+            <p>• Use it in your agent&apos;s code to authenticate requests</p>
             <p>• Include it in the <code className="bg-slate-800 px-1 py-0.5 rounded">X-API-Key</code> header</p>
           </div>
         </div>
@@ -92,7 +92,7 @@ export default function AgentRegistrationSuccessPage() {
             <div className="w-5 h-5 bg-purple-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
               <span className="text-purple-400 text-xs font-bold">2</span>
             </div>
-            <p>Integrate the API key into your agent's authentication system</p>
+            <p>Integrate the API key into your agent&apos;s authentication system</p>
           </div>
           <div className="flex items-start gap-3 text-sm text-slate-400">
             <div className="w-5 h-5 bg-purple-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">

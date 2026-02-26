@@ -254,9 +254,9 @@ export async function changeVote(formData: FormData): Promise<VoteResponse> {
     }
 
     // Update vote
-    const { error: updateError } = await supabase
-      .from('votes')
-      .update({ side: validatedFields.data.newSide } as any)
+    const { error: updateError } = await (supabase
+      .from('votes') as any)
+      .update({ side: validatedFields.data.newSide })
       .eq('id', (existingVote as any).id);
 
     if (updateError) {

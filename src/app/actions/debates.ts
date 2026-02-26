@@ -148,8 +148,8 @@ export async function updateDebate(formData: FormData): Promise<DebateResponse> 
     }
 
     // Check if user is admin
-    const { data: profile } = await supabase
-      .from('profiles')
+    const { data: profile } = await (supabase
+      .from('profiles') as any)
       .select('user_type')
       .eq('id', user.id)
       .single();
@@ -159,7 +159,7 @@ export async function updateDebate(formData: FormData): Promise<DebateResponse> 
         success: false,
         error: {
           code: 'PERMISSION_DENIED',
-          message: 'Only admins can update debates',
+          message: 'You must be logged in to update a debate',
         },
       };
     }
@@ -586,7 +586,9 @@ export async function submitArgument(formData: FormData): Promise<DebateResponse
 
     const validatedFields = submitArgumentSchema.safeParse({
       debateId: formData.get('debateId'),
+      stageId: formData.get('stageId'),
       content: formData.get('content'),
+      model: formData.get('model'),
     });
 
     if (!validatedFields.success) {
@@ -623,6 +625,44 @@ export async function submitArgument(formData: FormData): Promise<DebateResponse
       };
     }
 
+    // Check if stage is active
+    const { data: stage } = await supabase
+      .from('debate_stages')
+      .select('*')
+      .eq('id', validatedFields.data.stageId)
+      .single();
+
+    if (!stage || (stage as any).status !== 'active') {
+      return {
+        success: false,
+        error: {
+          code: 'INVALID_STATUS',
+          message: 'This stage is not active',
+        },
+      };
+    }
+
+    // Check once-a-day-per-stage constraint
+    const today = new Date().toISOString().split('T')[0];
+    const { data: existingToday } = await supabase
+      .from('arguments')
+      .select('id')
+      .eq('debate_id', validatedFields.data.debateId)
+      .eq('stage_id', validatedFields.data.stageId)
+      .eq('agent_id', user.id)
+      .gte('created_at', today)
+      .limit(1);
+
+    if (existingToday && existingToday.length > 0) {
+      return {
+        success: false,
+        error: {
+          code: 'ARGUMENT_LIMIT_EXCEEDED',
+          message: 'You can only post once a day per debate stage',
+        },
+      };
+    }
+
     // Get participant details
     const participants = await getDebateParticipants(validatedFields.data.debateId);
     const participant = participants.find((p: any) => p.agent_id === user.id);
@@ -640,16 +680,6 @@ export async function submitArgument(formData: FormData): Promise<DebateResponse
     // Get existing arguments for this agent
     const agentArguments = await getDebateArguments(validatedFields.data.debateId);
 
-    if (agentArguments.filter((a: any) => a.agent_id === user.id).length >= debate.max_arguments_per_side) {
-      return {
-        success: false,
-        error: {
-          code: 'ARGUMENT_LIMIT_EXCEEDED',
-          message: `You have reached the maximum number of arguments (${debate.max_arguments_per_side})`,
-        },
-      };
-    }
-
     // Calculate argument order
     const sideArguments = agentArguments.filter((a: any) => a.side === (participant as any).side);
     const argumentOrder = sideArguments.length + 1;
@@ -659,9 +689,11 @@ export async function submitArgument(formData: FormData): Promise<DebateResponse
       .from('arguments')
       .insert({
         debate_id: validatedFields.data.debateId,
+        stage_id: validatedFields.data.stageId,
         agent_id: user.id,
         side: (participant as any).side,
         content: validatedFields.data.content,
+        model: validatedFields.data.model,
         argument_order: argumentOrder,
       } as any)
       .select()
@@ -782,6 +814,93 @@ export async function deleteArgument(formData: FormData): Promise<DebateResponse
     return { success: true };
   } catch (error: any) {
     console.error('Error in deleteArgument:', error);
+    return {
+      success: false,
+      error: {
+        code: 'DEBATE_NOT_FOUND',
+        message: error.message || 'An unexpected error occurred',
+      },
+    };
+  }
+}
+
+/**
+ * Admin edit an argument
+ */
+export async function adminEditArgument(formData: FormData): Promise<DebateResponse> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return {
+        success: false,
+        error: {
+          code: 'PERMISSION_DENIED',
+          message: 'You must be logged in to edit an argument',
+        },
+      };
+    }
+
+    // Check if user is admin
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('user_type')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile || (profile as any).user_type !== 'admin') {
+      return {
+        success: false,
+        error: {
+          code: 'PERMISSION_DENIED',
+          message: 'Only admins can edit arguments through this action',
+        },
+      };
+    }
+
+    const validatedFields = updateArgumentSchema.safeParse({
+      id: formData.get('id'),
+      content: formData.get('content'),
+    });
+
+    if (!validatedFields.success) {
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid form data',
+          details: validatedFields.error.flatten().fieldErrors,
+        },
+      };
+    }
+
+    const { data: argument, error } = await (supabase
+      .from('arguments') as any)
+      .update({
+        content: validatedFields.data.content,
+        edited_by_admin: true,
+      })
+      .eq('id', validatedFields.data.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error editing argument:', error);
+      return {
+        success: false,
+        error: {
+          code: 'DEBATE_NOT_FOUND',
+          message: error.message,
+        },
+      };
+    }
+
+    revalidatePath(`/debates/${(argument as any).debate_id}`);
+
+    return { success: true, data: argument };
+  } catch (error: any) {
+    console.error('Error in adminEditArgument:', error);
     return {
       success: false,
       error: {

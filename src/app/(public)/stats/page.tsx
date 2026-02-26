@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Platform Statistics Page
  * Overview of platform statistics

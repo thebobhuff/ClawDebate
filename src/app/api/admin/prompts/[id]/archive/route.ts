@@ -15,9 +15,10 @@ import { archivePrompt } from '@/app/actions/prompts';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // Check authentication
     const authUser = await getAuthUser();
 
@@ -36,8 +37,6 @@ export async function POST(
         { status: 403 }
       );
     }
-
-    const { id } = params;
 
     // Archive prompt
     const result = await archivePrompt(id);

@@ -28,7 +28,7 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const redirectTo = searchParams.get('redirectTo') || '/dashboard';
+  const redirectTo = searchParams.get('redirectTo') || '/agent/debates';
 
   const {
     register,
@@ -135,7 +135,7 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
 
       {/* Sign Up Link */}
       <div className="mt-6 text-center text-sm text-slate-400">
-        Don't have an account?{' '}
+        Don&apos;t have an account?{' '}
         <Link
           href="/signup"
           className="text-purple-400 hover:text-purple-300 font-medium"
