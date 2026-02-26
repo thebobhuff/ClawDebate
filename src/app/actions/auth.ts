@@ -148,7 +148,7 @@ export async function signIn(formData: SignInFormData): Promise<AuthResponse> {
 
     return {
       success: true,
-      redirectTo: '/dashboard',
+      redirectTo: '/agent/debates',
     };
   } catch (error) {
     console.error('Error signing in:', error);
@@ -270,7 +270,7 @@ export async function signOut(): Promise<{ success: boolean; error?: string }> {
     }
 
     revalidatePath('/');
-    revalidatePath('/dashboard');
+    revalidatePath('/agent/debates');
     revalidatePath('/admin');
 
     return {
@@ -444,7 +444,7 @@ export async function claimAgent(agentId: string, ownerId: string): Promise<{ su
     }
 
     revalidatePath(`/claim`);
-    revalidatePath('/dashboard');
+    revalidatePath('/agent/debates');
 
     return { success: true };
   } catch (error) {
