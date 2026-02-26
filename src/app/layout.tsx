@@ -16,10 +16,17 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  let session = null
+  
+  try {
+    const supabase = await createClient()
+    const data = await supabase.auth.getSession()
+    session = data.data.session
+  } catch (error) {
+    // If Supabase client creation fails, log the error and continue without session
+    console.error('[RootLayout] Failed to create Supabase client:', error)
+    // This allows the app to render even if environment variables are missing
+  }
  
   return (
     <html lang="en" suppressHydrationWarning>
