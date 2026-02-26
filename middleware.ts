@@ -3,8 +3,10 @@
  * Handles lightweight route protection for auth and protected pages.
  */
 
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { createServiceRoleClient } from '@/lib/supabase/service-role';
 
 function matchesPath(pathname: string, basePath: string): boolean {
   if (basePath === '/') return pathname === '/';
@@ -12,7 +14,7 @@ function matchesPath(pathname: string, basePath: string): boolean {
 }
 
 function isProtectedPath(pathname: string): boolean {
-  const protectedPaths = ['/admin', '/profile'];
+  const protectedPaths = ['/admin', '/profile', '/agent'];
   return protectedPaths.some((path) => matchesPath(pathname, path));
 }
 
@@ -21,15 +23,26 @@ function isAuthPath(pathname: string): boolean {
   return authPaths.some((path) => matchesPath(pathname, path));
 }
 
-      try {
-        // Validate API key
-        await validateAgentApiKey(apiKey);
-        return NextResponse.next();
-      } catch (error) {
-        console.error('[Middleware] API key validation failed:', error);
-        return createApiUnauthorizedResponse('Invalid API key');
-      }
-    }
+async function validateAgentApiKey(apiKey: string): Promise<void> {
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('agent_api_key', apiKey)
+    .eq('user_type', 'agent')
+    .single();
+
+  if (error || !data) {
+    throw new Error('Invalid API key');
+  }
+}
+
+function createApiUnauthorizedResponse(message: string = 'Invalid or missing API key'): NextResponse {
+  return NextResponse.json(
+    { error: message },
+    { status: 401, headers: { 'Content-Type': 'application/json' } }
+  );
+}
 
 function redirectToSignIn(request: NextRequest, redirectTo?: string): NextResponse {
   const signInUrl = new URL('/signin', request.url);
@@ -37,7 +50,27 @@ function redirectToSignIn(request: NextRequest, redirectTo?: string): NextRespon
   return NextResponse.redirect(signInUrl);
 }
 
-  // Check if required environment variables are set
+export async function middleware(request: NextRequest): Promise<NextResponse> {
+  const { pathname } = request.nextUrl;
+
+  // Validate agent API key for agent API routes.
+  if (pathname.startsWith('/api/agents/')) {
+    const apiKeyHeader = request.headers.get('x-api-key') || request.headers.get('authorization');
+    const apiKey = apiKeyHeader?.startsWith('Bearer ') ? apiKeyHeader.slice(7) : apiKeyHeader;
+
+    if (!apiKey) {
+      return createApiUnauthorizedResponse('Missing API key');
+    }
+
+    try {
+      await validateAgentApiKey(apiKey);
+      return NextResponse.next();
+    } catch (error) {
+      console.error('[Middleware] API key validation failed:', error);
+      return createApiUnauthorizedResponse('Invalid API key');
+    }
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -47,87 +80,68 @@ function redirectToSignIn(request: NextRequest, redirectTo?: string): NextRespon
       hasAnonKey: !!supabaseAnonKey,
     });
 
-    // In production, allow request to proceed if env vars are missing
-    // This prevents the app from completely breaking
+    // Prevent production outage if env vars are missing.
     if (process.env.NODE_ENV === 'production') {
-      console.warn('[Middleware] Proceeding without authentication due to missing environment variables');
       return NextResponse.next();
     }
 
-    // In development, show a helpful error
     return new NextResponse(
       'Missing required environment variables. Please check your .env.local file.',
       { status: 500 }
     );
   }
 
+  const response = NextResponse.next();
+
   try {
-    // Create Supabase client for middleware
-    const supabase = createServerClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
         },
-      }
-    );
+        setAll(cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+        },
+      },
+    });
 
-    // Check authentication status
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    // Protected routes require authentication
-    if (isProtectedPath(pathname)) {
-      if (!user) {
-        return redirectToSignIn(request);
-      }
-      return NextResponse.next();
+    if (isProtectedPath(pathname) && !user) {
+      return redirectToSignIn(request);
     }
 
-    // Auth pages - redirect authenticated users away
-    if (isAuthPath(pathname)) {
-      if (user) {
-        try {
-          // Get user type to determine redirect
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('user_type')
-            .eq('id', user.id)
-            .single();
+    if (isAuthPath(pathname) && user) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('user_type')
+          .eq('id', user.id)
+          .single();
 
-          if (profile) {
-            const userType = (profile as any).user_type;
-            if (userType === 'admin') {
-              return NextResponse.redirect(new URL('/admin', request.url));
-            } else if (userType === 'agent') {
-              return NextResponse.redirect(new URL('/dashboard', request.url));
-            } else {
-              return NextResponse.redirect(new URL('/dashboard', request.url));
-            }
-          }
-          return NextResponse.redirect(new URL('/dashboard', request.url));
-        } catch (error) {
-          console.error('[Middleware] Error fetching user profile:', error);
-          // If we can't fetch the profile, just redirect to dashboard
-          return NextResponse.redirect(new URL('/dashboard', request.url));
+        if ((profile as { user_type?: string } | null)?.user_type === 'admin') {
+          return NextResponse.redirect(new URL('/admin', request.url));
         }
+
+        return NextResponse.redirect(new URL('/agent/debates', request.url));
+      } catch (error) {
+        console.error('[Middleware] Error fetching user profile:', error);
+        return NextResponse.redirect(new URL('/agent/debates', request.url));
       }
     }
 
-    // Allow all other requests
-    return NextResponse.next();
+    return response;
   } catch (error) {
     console.error('[Middleware] Unexpected error:', error);
 
-    // In production, allow request to proceed on errors
     if (process.env.NODE_ENV === 'production') {
-      console.warn('[Middleware] Proceeding despite error:', error);
       return NextResponse.next();
     }
 
-    // In development, show the error
     return new NextResponse(
       `Middleware error: ${error instanceof Error ? error.message : 'Unknown error'}`,
       { status: 500 }
@@ -135,13 +149,14 @@ function redirectToSignIn(request: NextRequest, redirectTo?: string): NextRespon
   }
 }
 
-// Configure middleware to run on specific paths
 export const config = {
   matcher: [
     '/admin/:path*',
     '/profile/:path*',
+    '/agent/:path*',
     '/signin',
     '/signup',
     '/register/:path*',
+    '/api/agents/:path*',
   ],
 };
