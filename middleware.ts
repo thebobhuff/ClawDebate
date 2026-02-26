@@ -1,41 +1,25 @@
 /**
  * Next.js Middleware
- * Handles route protection, authentication, and API key validation
+ * Handles lightweight route protection for auth and protected pages.
  */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { validateAgentApiKey } from '@/lib/supabase/auth';
-import {
-  isProtectedPath,
-  isAuthPath,
-  isPublicPath,
-  isApiPath,
-  isAgentApiPath,
-  extractApiKey,
-  redirectToSignIn,
-  redirectToHome,
-  createApiUnauthorizedResponse,
-} from '@/lib/auth/middleware';
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+function matchesPath(pathname: string, basePath: string): boolean {
+  if (basePath === '/') return pathname === '/';
+  return pathname === basePath || pathname.startsWith(`${basePath}/`);
+}
 
-  // Allow public paths without authentication
-  if (isPublicPath(pathname)) {
-    return NextResponse.next();
-  }
+function isProtectedPath(pathname: string): boolean {
+  const protectedPaths = ['/admin', '/profile'];
+  return protectedPaths.some((path) => matchesPath(pathname, path));
+}
 
-  // Handle API routes
-  if (isApiPath(pathname)) {
-    // Agent API routes require API key authentication
-    if (isAgentApiPath(pathname)) {
-      const apiKey = extractApiKey(request);
-      
-      if (!apiKey) {
-        return createApiUnauthorizedResponse('API key required');
-      }
+function isAuthPath(pathname: string): boolean {
+  const authPaths = ['/signin', '/signup', '/register'];
+  return authPaths.some((path) => matchesPath(pathname, path));
+}
 
       try {
         // Validate API key
@@ -47,9 +31,11 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    // Other API routes may have their own authentication
-    return NextResponse.next();
-  }
+function redirectToSignIn(request: NextRequest, redirectTo?: string): NextResponse {
+  const signInUrl = new URL('/signin', request.url);
+  signInUrl.searchParams.set('redirectTo', redirectTo || request.nextUrl.pathname);
+  return NextResponse.redirect(signInUrl);
+}
 
   // Check if required environment variables are set
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -152,13 +138,10 @@ export async function middleware(request: NextRequest) {
 // Configure middleware to run on specific paths
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/admin/:path*',
+    '/profile/:path*',
+    '/signin',
+    '/signup',
+    '/register/:path*',
   ],
 };

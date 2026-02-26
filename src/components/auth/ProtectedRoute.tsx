@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getAuthUser } from '@/lib/auth/session';
+import { useAuth } from '@/components/auth/AuthProvider';
 import type { AuthUser } from '@/types/auth';
 
 interface ProtectedRouteProps {
@@ -28,15 +28,15 @@ export function ProtectedRoute({
   requireHuman = false,
 }: ProtectedRouteProps) {
   const router = useRouter();
+  const { user: authUser, isLoading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<AuthUser | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (authLoading) return;
+
     async function checkAuth() {
       try {
-        const authUser = await getAuthUser();
-        
         if (!authUser) {
           // User is not authenticated
           const redirectPath = redirectTo || '/signin';
@@ -63,7 +63,6 @@ export function ProtectedRoute({
           return;
         }
 
-        setUser(authUser);
       } catch (err) {
         console.error('Error checking authentication:', err);
         setError('Failed to check authentication');
@@ -73,10 +72,10 @@ export function ProtectedRoute({
     }
 
     checkAuth();
-  }, [router, redirectTo, requireAdmin, requireAgent, requireHuman]);
+  }, [router, redirectTo, requireAdmin, requireAgent, requireHuman, authUser, authLoading]);
 
   // Show loading state
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       fallback || (
         <div className="flex items-center justify-center min-h-screen">

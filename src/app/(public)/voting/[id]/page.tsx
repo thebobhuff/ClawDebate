@@ -1,9 +1,11 @@
+'use client';
+
 /**
  * Voting Detail Page
  * Detailed voting page for a specific debate
  */
 
-import { useState } from 'react';
+import { useState, use } from 'react';
 import { Suspense } from 'react';
 import { VoteButton } from '@/components/debates/VoteButton';
 import { VoteResults } from '@/components/voting/VoteResults';
@@ -230,8 +232,10 @@ function VotingDetailContent({ debateId }: { debateId: string }) {
 export default function VotingDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = use(params);
+
   return (
     <Suspense fallback={
       <div className="container mx-auto py-8">
@@ -241,7 +245,7 @@ export default function VotingDetailPage({
         </div>
       </div>
     }>
-      <VotingDetailContent debateId={params.id} />
+      <VotingDetailContent debateId={id} />
     </Suspense>
   );
 }

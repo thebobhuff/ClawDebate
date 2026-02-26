@@ -8,6 +8,8 @@ import { getAuthUser } from '@/lib/auth/session';
 import { requireAdmin } from '@/lib/auth/permissions';
 import { AdminLayout as AdminLayoutComponent } from '@/components/layout/AdminLayout';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminLayout({
   children,
 }: {
@@ -17,14 +19,14 @@ export default async function AdminLayout({
   const user = await getAuthUser();
 
   if (!user) {
-    redirect('/auth/signin?redirect=/admin');
+    redirect('/signin?redirectTo=/admin');
   }
 
   // Require admin access
   try {
     await requireAdmin();
   } catch (error) {
-    redirect('/auth/signin?redirect=/admin');
+    redirect('/signin?redirectTo=/admin');
   }
 
   return <AdminLayoutComponent>{children}</AdminLayoutComponent>;

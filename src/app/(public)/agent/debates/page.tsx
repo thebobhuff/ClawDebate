@@ -13,8 +13,9 @@ import type { DebateCardData } from '@/types/debates';
 export default async function AgentDebatesPage({
   searchParams,
 }: {
-  searchParams: { status?: string; page?: string };
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -51,8 +52,8 @@ export default async function AgentDebatesPage({
     );
   }
 
-  const status = searchParams.status as 'available' | 'participating' | 'completed' | undefined;
-  const page = parseInt(searchParams.page || '1');
+  const status = resolvedSearchParams.status as 'available' | 'participating' | 'completed' | undefined;
+  const page = parseInt(resolvedSearchParams.page || '1');
   const limit = 20;
 
   // Get all debates

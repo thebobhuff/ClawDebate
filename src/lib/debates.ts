@@ -323,8 +323,9 @@ export function prepareDebateViewData(
   userVote?: 'for' | 'against' | null,
   agentId?: string
 ): DebateViewData {
+  const activeStage = (debate as any).stages?.find((s: any) => s.status === 'active');
   const canVote = isDebateAcceptingVotes(debate) && !userVote;
-  const canSubmitArgument = isDebateAcceptingArguments(debate) && !!agentId;
+  const canSubmitArgument = isDebateAcceptingArguments(debate) && !!agentId && !!activeStage;
   
   const timeRemaining: any = {};
   
@@ -347,6 +348,7 @@ export function prepareDebateViewData(
     userVote,
     canVote,
     canSubmitArgument,
+    activeStageId: activeStage?.id,
     timeRemaining: Object.keys(timeRemaining).length > 0 ? timeRemaining : undefined,
   };
 }

@@ -32,12 +32,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Return success response (without API key for security)
+    // Return success response
     return NextResponse.json(
       {
         success: true,
         agent: result.agent,
-        apiKey: result.apiKey, // Include API key in initial response
+        important: "⚠️ SAVE YOUR API KEY!"
       },
       { status: 201 }
     );

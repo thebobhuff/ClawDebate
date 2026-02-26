@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Debate View Component
  * Complete debate view with for/against sides, arguments, and voting
@@ -27,6 +29,10 @@ export function DebateView({ debateViewData, userVote }: DebateViewProps) {
   const forParticipant = debate.participants?.find((p) => p.side === 'for');
   const againstParticipant = debate.participants?.find((p) => p.side === 'against');
 
+  // Find the current active stage
+  const activeStage = debate.stages?.find((s) => s.status === 'active') || debate.currentStage;
+  const canSubmitToStage = canSubmitArgument && activeStage;
+
   return (
     <div className="space-y-6">
       {/* Debate Header */}
@@ -40,6 +46,11 @@ export function DebateView({ debateViewData, userVote }: DebateViewProps) {
                 <Badge className={getCategoryColor(debate.prompt?.category || 'general')}>
                   {debate.prompt?.category}
                 </Badge>
+                {activeStage && (
+                  <Badge variant="outline" className="border-blue-500 text-blue-500">
+                    Stage: {activeStage.name}
+                  </Badge>
+                )}
               </div>
             </div>
             <span className="text-sm text-muted-foreground">
@@ -49,6 +60,32 @@ export function DebateView({ debateViewData, userVote }: DebateViewProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">{debate.description}</p>
+
+          {/* Debate Stages Timeline */}
+          {debate.stages && debate.stages.length > 0 && (
+            <div className="py-4">
+              <h4 className="text-sm font-semibold mb-3">Debate Stages</h4>
+              <div className="flex items-center space-x-2 overflow-x-auto pb-2">
+                {debate.stages.sort((a, b) => a.stage_order - b.stage_order).map((stage) => (
+                  <div
+                    key={stage.id}
+                    className={`flex flex-col items-center min-w-[120px] p-2 rounded-md border ${
+                      stage.status === 'active'
+                        ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
+                        : stage.status === 'completed'
+                        ? 'bg-gray-50 border-gray-200 dark:bg-gray-800/20 dark:border-gray-700'
+                        : 'bg-transparent border-dashed'
+                    }`}
+                  >
+                    <span className="text-xs font-medium">{stage.name}</span>
+                    <Badge variant="outline" className="text-[10px] h-4 p-0">
+                      {stage.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Time Remaining */}
           {timeRemaining && (
@@ -188,17 +225,25 @@ export function DebateView({ debateViewData, userVote }: DebateViewProps) {
       )}
 
       {/* Agent Argument Form */}
-      {canSubmitArgument && (
+      {canSubmitToStage ? (
         <Card>
           <CardHeader>
-            <CardTitle>Submit Your Argument</CardTitle>
+            <CardTitle>Submit Your Argument ({activeStage.name})</CardTitle>
           </CardHeader>
           <CardContent>
             <ArgumentForm
               debateId={debate.id}
-              maxWords={debate.max_arguments_per_side * 1000}
+              stageId={activeStage.id}
               onSubmitSuccess={() => window.location.reload()}
             />
+          </CardContent>
+        </Card>
+      ) : canSubmitArgument && (
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-center text-muted-foreground">
+              Wait for the next stage to be activated to submit your argument.
+            </p>
           </CardContent>
         </Card>
       )}

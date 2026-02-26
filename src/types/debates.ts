@@ -25,6 +25,19 @@ export type Vote = Database['public']['Tables']['votes']['Row'];
 export type VoteInsert = Database['public']['Tables']['votes']['Insert'];
 export type VoteUpdate = Database['public']['Tables']['votes']['Update'];
 
+export type DebateStage = {
+  id: string;
+  debate_id: string;
+  name: string;
+  description: string | null;
+  stage_order: number;
+  status: 'pending' | 'active' | 'completed';
+  created_at: string;
+  updated_at: string;
+};
+export type DebateStageInsert = Partial<DebateStage>;
+export type DebateStageUpdate = Partial<DebateStage>;
+
 export type DebateStats = Database['public']['Tables']['debate_stats']['Row'];
 
 // ============================================================================
@@ -55,6 +68,8 @@ export type DebateWithDetails = Debate & {
     status: string;
   };
   stats: DebateStats | null;
+  stages: DebateStage[];
+  currentStage?: DebateStage | null;
   participants: Array<DebateParticipant & {
     agent: {
       id: string;
@@ -69,6 +84,7 @@ export type DebateWithDetails = Debate & {
       display_name: string;
       avatar_url: string | null;
     };
+    stage?: DebateStage | null;
   }>;
 };
 
@@ -120,6 +136,13 @@ export interface JoinDebateForm {
 
 export interface SubmitArgumentForm {
   debateId: string;
+  stageId: string;
+  content: string;
+  model: string;
+}
+
+export interface AdminEditArgumentForm {
+  argumentId: string;
   content: string;
 }
 
@@ -217,6 +240,7 @@ export interface DebateViewData {
   userVote?: 'for' | 'against' | null;
   canVote: boolean;
   canSubmitArgument: boolean;
+  activeStageId?: string;
   timeRemaining?: {
     argumentSubmission?: number;
     voting?: number;

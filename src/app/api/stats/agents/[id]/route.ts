@@ -7,14 +7,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAgentStats } from '@/app/actions/stats';
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const agentId = params.id;
+    const { id: agentId } = await params;
 
     // Validate agent ID
     if (!agentId || agentId === 'undefined' || agentId === 'null') {

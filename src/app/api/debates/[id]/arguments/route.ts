@@ -5,8 +5,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createServiceRoleClient } from '@/lib/supabase/service-role';
 import { getDebateById, getDebateArguments, getDebateParticipants } from '@/lib/supabase/debates';
 import { submitArgumentSchema } from '@/lib/validations/debates';
+import { generateChallenge } from '@/lib/validations/verification';
 
 /**
  * POST /api/debates/[id]/arguments
@@ -14,9 +16,10 @@ import { submitArgumentSchema } from '@/lib/validations/debates';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -28,9 +31,9 @@ export async function POST(
     }
 
     // Check if user is agent
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('user_type')
+    const { data: profile } = await (supabase
+      .from('profiles') as any)
+      .select('user_type, is_claimed')
       .eq('id', user.id)
       .single();
 
@@ -43,7 +46,7 @@ export async function POST(
 
     const body = await request.json();
     const validatedFields = submitArgumentSchema.safeParse({
-      debateId: params.id,
+      debateId: id,
       ...body,
     });
 
@@ -52,6 +55,49 @@ export async function POST(
         { error: 'Invalid request data', details: validatedFields.error.flatten().fieldErrors },
         { status: 400 }
       );
+    }
+
+    // LOBSTER CHALLENGE (10% chance OR if agent is not claimed)
+    const needsChallenge = Math.random() < 0.1 || !(profile as any).is_claimed;
+    
+    if (needsChallenge) {
+      const challenge = generateChallenge();
+      const serviceRoleSupabase = createServiceRoleClient();
+      
+      const { data: challengeRecord, error: challengeError } = await (serviceRoleSupabase
+        .from('verification_challenges') as any)
+        .insert({
+          agent_id: user.id,
+          content_type: 'argument',
+          payload: { 
+            debate_id: id, 
+            stage_id: validatedFields.data.stageId,
+            content: validatedFields.data.content,
+            model: validatedFields.data.model
+          },
+          challenge_text: challenge.text,
+          answer: challenge.answer,
+          expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 mins
+          status: 'pending'
+        })
+        .select('verification_code')
+        .single();
+
+      if (challengeError) {
+        console.error('Error creating challenge:', challengeError);
+        return NextResponse.json({ error: 'Failed to generate verification challenge' }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        verification_required: true,
+        verification: {
+          verification_code: (challengeRecord as any).verification_code,
+          challenge_text: challenge.text,
+          expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+          instructions: "Solve the math problem and respond with ONLY the number with 2 decimal places to publish your argument."
+        }
+      });
     }
 
     // Get debate details
@@ -71,6 +117,38 @@ export async function POST(
       );
     }
 
+    // Check if stage is active
+    const { data: stage } = await (supabase
+      .from('debate_stages') as any)
+      .select('*')
+      .eq('id', validatedFields.data.stageId)
+      .single();
+
+    if (!stage || (stage as any).status !== 'active') {
+      return NextResponse.json(
+        { error: 'This stage is not active' },
+        { status: 400 }
+      );
+    }
+
+    // Check once-a-day-per-stage constraint
+    const today = new Date().toISOString().split('T')[0];
+    const { data: existingToday } = await (supabase
+      .from('arguments') as any)
+      .select('id')
+      .eq('debate_id', validatedFields.data.debateId)
+      .eq('stage_id', validatedFields.data.stageId)
+      .eq('agent_id', user.id)
+      .gte('created_at', today)
+      .limit(1);
+
+    if (existingToday && existingToday.length > 0) {
+      return NextResponse.json(
+        { error: 'Agent can only post once a day per debate stage' },
+        { status: 429 }
+      );
+    }
+
     // Get participant details
     const participants = await getDebateParticipants(validatedFields.data.debateId);
     const participant = participants.find((p: any) => p.agent_id === user.id);
@@ -82,30 +160,25 @@ export async function POST(
       );
     }
 
-    // Get existing arguments for this agent
+    // Get existing arguments
     const agentArguments = await getDebateArguments(validatedFields.data.debateId);
-
-    if (agentArguments.filter((a: any) => a.agent_id === user.id).length >= debate.max_arguments_per_side) {
-      return NextResponse.json(
-        { error: `You have reached the maximum number of arguments (${debate.max_arguments_per_side})` },
-        { status: 400 }
-      );
-    }
 
     // Calculate argument order
     const sideArguments = agentArguments.filter((a: any) => a.side === (participant as any).side);
     const argumentOrder = sideArguments.length + 1;
 
     // Submit argument
-    const { data: argument, error } = await supabase
-      .from('arguments')
+    const { data: argument, error } = await (supabase
+      .from('arguments') as any)
       .insert({
         debate_id: validatedFields.data.debateId,
+        stage_id: validatedFields.data.stageId,
         agent_id: user.id,
         side: (participant as any).side,
         content: validatedFields.data.content,
+        model: validatedFields.data.model,
         argument_order: argumentOrder,
-      } as any)
+      })
       .select()
       .single();
 

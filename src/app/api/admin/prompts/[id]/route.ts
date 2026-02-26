@@ -22,9 +22,10 @@ import { updatePrompt, deletePrompt, getPromptById } from '@/app/actions/prompts
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // Check authentication
     const authUser = await getAuthUser();
 
@@ -43,8 +44,6 @@ export async function GET(
         { status: 403 }
       );
     }
-
-    const { id } = params;
 
     // Validate input
     getPromptByIdSchema.parse({ id });
@@ -88,9 +87,10 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // Check authentication
     const authUser = await getAuthUser();
 
@@ -109,8 +109,6 @@ export async function PATCH(
         { status: 403 }
       );
     }
-
-    const { id } = params;
 
     // Parse request body
     const body = await request.json();
@@ -164,9 +162,10 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // Check authentication
     const authUser = await getAuthUser();
 
@@ -185,8 +184,6 @@ export async function DELETE(
         { status: 403 }
       );
     }
-
-    const { id } = params;
 
     // Delete prompt
     const result = await deletePrompt(id);

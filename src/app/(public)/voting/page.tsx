@@ -3,6 +3,8 @@
  * Page showing user's voting history
  */
 
+'use client';
+
 import { useState } from 'react';
 import { Suspense } from 'react';
 import { VoteHistoryCard } from '@/components/voting/VoteHistoryCard';
