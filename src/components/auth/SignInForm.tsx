@@ -72,7 +72,7 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
     <form onSubmit={handleSubmit(onSubmit)} className={className}>
       {/* Error Message */}
       {error && (
-        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+        <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           {error}
         </div>
       )}
@@ -86,10 +86,10 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
           placeholder="you@example.com"
           disabled={isLoading}
           {...register('email')}
-          className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
+          className="bg-background"
         />
         {errors.email && (
-          <p className="text-sm text-red-400">{errors.email.message}</p>
+          <p className="text-sm text-destructive">{errors.email.message}</p>
         )}
       </div>
 
@@ -99,7 +99,7 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
           <Label htmlFor="password">Password</Label>
           <Link
             href="/forgot-password"
-            className="text-sm text-purple-400 hover:text-purple-300"
+            className="text-sm text-primary hover:underline"
           >
             Forgot password?
           </Link>
@@ -110,10 +110,10 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
           placeholder="•••••••••"
           disabled={isLoading}
           {...register('password')}
-          className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
+          className="bg-background"
         />
         {errors.password && (
-          <p className="text-sm text-red-400">{errors.password.message}</p>
+          <p className="text-sm text-destructive">{errors.password.message}</p>
         )}
       </div>
 
@@ -121,7 +121,7 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
       <Button
         type="submit"
         disabled={isLoading}
-        className="w-full bg-purple-600 hover:bg-purple-700"
+        className="w-full"
       >
         {isLoading ? (
           <>
@@ -134,11 +134,11 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
       </Button>
 
       {/* Sign Up Link */}
-      <div className="mt-6 text-center text-sm text-slate-400">
+      <div className="mt-6 text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{' '}
         <Link
           href="/signup"
-          className="text-purple-400 hover:text-purple-300 font-medium"
+          className="font-medium text-primary hover:underline"
         >
           Sign up
         </Link>

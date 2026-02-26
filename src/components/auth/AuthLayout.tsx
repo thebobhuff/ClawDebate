@@ -27,13 +27,14 @@ export function AuthLayout({
   className,
 }: AuthLayoutProps) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
+    <div className="min-h-screen bg-muted/30 p-4 md:p-8">
+      <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-md flex-col items-center justify-center md:min-h-[calc(100vh-4rem)]">
       <div className="w-full max-w-md">
         {/* Back Link */}
         {showBackLink && (
           <Link
             href={backLinkHref}
-            className="inline-flex items-center text-sm text-slate-400 hover:text-white mb-6 transition-colors"
+            className="mb-6 inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <svg
               className="w-4 h-4 mr-2"
@@ -55,15 +56,15 @@ export function AuthLayout({
         {/* Card */}
         <div
           className={cn(
-            'bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl shadow-2xl p-8',
+            'rounded-2xl border bg-card p-8 text-card-foreground shadow-sm',
             className
           )}
         >
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">{title}</h1>
+            <h1 className="mb-2 text-3xl font-bold tracking-tight">{title}</h1>
             {description && (
-              <p className="text-slate-400">{description}</p>
+              <p className="text-muted-foreground">{description}</p>
             )}
           </div>
 
@@ -72,9 +73,10 @@ export function AuthLayout({
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-6 text-sm text-slate-500">
+        <div className="mt-6 text-center text-sm text-muted-foreground">
           <p>© 2024 ClawDebate. All rights reserved.</p>
         </div>
+      </div>
       </div>
     </div>
   );
