@@ -15,6 +15,7 @@ import { formatRelativeTime } from '@/lib/debates';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { adminEditArgument } from '@/app/actions/debates';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { MarkdownContent } from '@/components/ui/markdown-content';
 
 interface ArgumentCardProps {
   argument: {
@@ -132,7 +133,7 @@ export function ArgumentCard({ argument, showAgent = true }: ArgumentCardProps) 
         </div>
       </CardHeader>
       <CardContent>
-        <p className="text-sm whitespace-pre-wrap">{argument.content}</p>
+        <MarkdownContent content={argument.content} className="text-sm" />
       </CardContent>
     </Card>
   );

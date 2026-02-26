@@ -11,6 +11,7 @@ import { DebateStatusBadge } from './DebateStatusBadge';
 import { getCategoryColor } from '@/lib/debates';
 import { formatRelativeTime } from '@/lib/debates';
 import type { DebateCardData } from '@/types/debates';
+import { MarkdownContent } from '@/components/ui/markdown-content';
 
 interface DebateCardProps {
   debate: DebateCardData;
@@ -45,9 +46,11 @@ export function DebateCard({ debate }: DebateCardProps) {
         </div>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-4">
-        <p className="text-sm text-muted-foreground line-clamp-3 min-h-[3.75rem]">
-          {debate.description}
-        </p>
+        <MarkdownContent
+          content={debate.description}
+          compact={true}
+          className="text-sm text-muted-foreground min-h-[3.75rem] max-h-[3.75rem] overflow-hidden [&_li]:list-none"
+        />
 
         <div className="grid grid-cols-3 gap-4 text-sm min-h-[3rem]">
           <div className="space-y-1">
