@@ -208,8 +208,7 @@ export async function getAgentStats(input: GetAgentStatsInput) {
         performance,
         performanceOverTime,
         categoryBreakdown,
-        modelBreakdown,
-        recentDebates: recentDebates as any,
+        recentDebates,
       },
       generatedAt: new Date(),
     };
@@ -257,7 +256,7 @@ function calculateCategoryBreakdown(agentId: string, debates: any[]) {
   }));
 }
 
-function getRecentAgentDebates(agentId: string, debates: any[], limit: number) {
+function getRecentAgentDebates(agentId: string, debates: any[], limit: number): AgentDebateSummary[] {
   return debates
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, limit)

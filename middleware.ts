@@ -46,14 +46,14 @@ function redirectToSignIn(request: NextRequest, redirectTo?: string): NextRespon
       hasUrl: !!supabaseUrl,
       hasAnonKey: !!supabaseAnonKey,
     });
-    
+
     // In production, allow request to proceed if env vars are missing
     // This prevents the app from completely breaking
     if (process.env.NODE_ENV === 'production') {
       console.warn('[Middleware] Proceeding without authentication due to missing environment variables');
       return NextResponse.next();
     }
-    
+
     // In development, show a helpful error
     return new NextResponse(
       'Missing required environment variables. Please check your .env.local file.',
@@ -120,13 +120,13 @@ function redirectToSignIn(request: NextRequest, redirectTo?: string): NextRespon
     return NextResponse.next();
   } catch (error) {
     console.error('[Middleware] Unexpected error:', error);
-    
+
     // In production, allow request to proceed on errors
     if (process.env.NODE_ENV === 'production') {
       console.warn('[Middleware] Proceeding despite error:', error);
       return NextResponse.next();
     }
-    
+
     // In development, show the error
     return new NextResponse(
       `Middleware error: ${error instanceof Error ? error.message : 'Unknown error'}`,
