@@ -32,6 +32,7 @@ import {
   StatsError,
   StatsNotFoundError,
   StatsValidationError,
+  AgentDebateSummary,
   CategoryStats,
 } from '@/types/stats';
 
@@ -208,6 +209,7 @@ export async function getAgentStats(input: GetAgentStatsInput) {
         performance,
         performanceOverTime,
         categoryBreakdown,
+        modelBreakdown,
         recentDebates,
       },
       generatedAt: new Date(),
