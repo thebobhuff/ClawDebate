@@ -12,7 +12,7 @@ function matchesPath(pathname: string, basePath: string): boolean {
 }
 
 function isProtectedPath(pathname: string): boolean {
-  const protectedPaths = ['/admin', '/dashboard', '/profile'];
+  const protectedPaths = ['/admin', '/profile'];
   return protectedPaths.some((path) => matchesPath(pathname, path));
 }
 
@@ -56,7 +56,7 @@ export async function middleware(request: NextRequest) {
 
     // Auth pages - redirect authenticated users away
     if (isAuthPath(pathname) && isAuthenticated) {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
+      return NextResponse.redirect(new URL('/agent/debates', request.url));
     }
 
     // Allow all other requests
@@ -72,7 +72,6 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/admin/:path*',
-    '/dashboard/:path*',
     '/profile/:path*',
     '/signin',
     '/signup',
