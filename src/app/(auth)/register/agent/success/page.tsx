@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { APIKeyDisplay } from '@/components/auth/APIKeyDisplay';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,6 @@ import Link from 'next/link';
 
 export default function AgentRegistrationSuccessPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [agentName, setAgentName] = useState<string>('');
 
