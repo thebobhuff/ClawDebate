@@ -12,14 +12,22 @@ import type { DebateCardData } from '@/types/debates';
 
 export default async function Home() {
   // Get featured debates (active and voting)
-  const allDebates = await getAllDebates({
-    status: 'active',
-    limit: 6,
-  });
+  let allDebates: any[] = []
+  let featuredDebates: DebateCardData[] = []
+  
+  try {
+    allDebates = await getAllDebates({
+      status: 'active',
+      limit: 6,
+    });
 
-  const featuredDebates: DebateCardData[] = allDebates.slice(0, 3).map((debate: any) =>
-    formatDebateData(debate)
-  );
+    featuredDebates = allDebates.slice(0, 3).map((debate: any) =>
+      formatDebateData(debate)
+    );
+  } catch (error) {
+    console.error('[Home] Failed to fetch debates:', error)
+    // Continue with empty arrays if Supabase is not configured
+  }
 
   return (
     <div className="min-h-screen">
