@@ -5,7 +5,6 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
 
 function matchesPath(pathname: string, basePath: string): boolean {
   if (basePath === '/') return pathname === '/';
@@ -37,6 +36,15 @@ function redirectToSignIn(request: NextRequest, redirectTo?: string): NextRespon
   return NextResponse.redirect(signInUrl);
 }
 
+function hasAuthCookie(request: NextRequest): boolean {
+  const cookieNames = request.cookies.getAll().map((cookie) => cookie.name);
+  return cookieNames.some((name) =>
+    name === 'sb-access-token' ||
+    name.endsWith('-auth-token') ||
+    (name.startsWith('sb-') && name.includes('auth-token'))
+  );
+}
+
 export async function middleware(request: NextRequest) {
   try {
     const { pathname } = request.nextUrl;
@@ -52,61 +60,19 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    // If env is missing, fail open to avoid runtime 500s from middleware.
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('Middleware missing Supabase env vars.');
-      return NextResponse.next();
-    }
-
-    // Create Supabase client for middleware
-    const supabase = createServerClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-        },
-      }
-    );
-
-    // Check authentication status
-    const { data: { user } } = await supabase.auth.getUser();
+    const isAuthenticated = hasAuthCookie(request);
 
     // Protected routes require authentication
     if (isProtectedPath(pathname)) {
-      if (!user) {
+      if (!isAuthenticated) {
         return redirectToSignIn(request);
       }
       return NextResponse.next();
     }
 
     // Auth pages - redirect authenticated users away
-    if (isAuthPath(pathname)) {
-      if (user) {
-        // Get user type to determine redirect
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('user_type')
-          .eq('id', user.id)
-          .single();
-
-        if (profile) {
-          const userType = (profile as any).user_type;
-          if (userType === 'admin') {
-            return NextResponse.redirect(new URL('/admin', request.url));
-          } else if (userType === 'agent') {
-            return NextResponse.redirect(new URL('/dashboard', request.url));
-          } else {
-            return NextResponse.redirect(new URL('/dashboard', request.url));
-          }
-        }
+    if (isAuthPath(pathname) && isAuthenticated) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
-      }
     }
 
     // Allow all other requests
