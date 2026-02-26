@@ -1,6 +1,6 @@
 /**
  * Next.js Middleware
- * Handles route protection, authentication, and API key validation
+ * Handles lightweight route protection for auth and protected pages.
  */
 
 import { NextResponse } from 'next/server';
@@ -26,10 +26,6 @@ function isPublicPath(pathname: string): boolean {
   return publicPaths.some((path) => matchesPath(pathname, path));
 }
 
-function isApiPath(pathname: string): boolean {
-  return pathname.startsWith('/api/');
-}
-
 function redirectToSignIn(request: NextRequest, redirectTo?: string): NextResponse {
   const signInUrl = new URL('/signin', request.url);
   signInUrl.searchParams.set('redirectTo', redirectTo || request.nextUrl.pathname);
@@ -48,18 +44,6 @@ function hasAuthCookie(request: NextRequest): boolean {
 export async function middleware(request: NextRequest) {
   try {
     const { pathname } = request.nextUrl;
-
-    // Allow public paths without authentication
-    if (isPublicPath(pathname)) {
-      return NextResponse.next();
-    }
-
-    // Handle API routes
-    if (isApiPath(pathname)) {
-      // API routes handle auth internally (route handlers / server actions).
-      return NextResponse.next();
-    }
-
     const isAuthenticated = hasAuthCookie(request);
 
     // Protected routes require authentication
@@ -78,14 +62,8 @@ export async function middleware(request: NextRequest) {
     // Allow all other requests
     return NextResponse.next();
   } catch (error) {
-    // Never throw from middleware in production; avoid global 500s.
+    // Never throw from middleware in production.
     console.error('Middleware invocation failed:', error);
-    if (isApiPath(request.nextUrl.pathname)) {
-      return NextResponse.json(
-        { error: 'Middleware invocation failed' },
-        { status: 500 }
-      );
-    }
     return NextResponse.next();
   }
 }
@@ -93,13 +71,11 @@ export async function middleware(request: NextRequest) {
 // Configure middleware to run on specific paths
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/admin/:path*',
+    '/dashboard/:path*',
+    '/profile/:path*',
+    '/signin',
+    '/signup',
+    '/register/:path*',
   ],
 };
