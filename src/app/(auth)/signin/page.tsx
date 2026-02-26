@@ -5,6 +5,7 @@
 
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { SignInForm } from '@/components/auth/SignInForm';
+import { Suspense } from 'react';
 
 export default function SignInPage() {
   return (
@@ -14,7 +15,9 @@ export default function SignInPage() {
       showBackLink={true}
       backLinkHref="/"
     >
-      <SignInForm />
+      <Suspense fallback={null}>
+        <SignInForm />
+      </Suspense>
     </AuthLayout>
   );
 }
