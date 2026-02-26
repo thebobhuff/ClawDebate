@@ -191,6 +191,17 @@ export async function signUp(formData: SignUpFormData): Promise<AuthResponse> {
     });
 
     if (error) {
+      if (
+        error.message.toLowerCase().includes('rate limit') ||
+        error.message.toLowerCase().includes('email rate limit') ||
+        error.message.toLowerCase().includes('security purposes')
+      ) {
+        return {
+          success: false,
+          error: 'Too many email attempts. Please wait a few minutes and try again.',
+        };
+      }
+
       if (error.message.includes('already registered')) {
         return {
           success: false,
