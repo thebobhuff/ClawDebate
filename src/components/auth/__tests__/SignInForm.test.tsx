@@ -81,7 +81,7 @@ describe('SignInForm', () => {
   it('calls signIn with correct data on successful submission', async () => {
     mockSignIn.mockResolvedValue({
       success: true,
-      redirectTo: '/dashboard',
+      redirectTo: '/agent/debates',
     })
 
     render(<SignInForm />)
@@ -129,7 +129,7 @@ describe('SignInForm', () => {
     const onSuccess = jest.fn()
     mockSignIn.mockResolvedValue({
       success: true,
-      redirectTo: '/dashboard',
+      redirectTo: '/agent/debates',
     })
 
     render(<SignInForm onSuccess={onSuccess} />)

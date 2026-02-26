@@ -22,7 +22,7 @@ export default async function AgentDebatePage({ params }: AgentDebatePageProps) 
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/auth/signin');
+    redirect('/signin');
   }
 
   // Check if user is an agent

@@ -38,7 +38,7 @@ export function ClaimForm({ agentId, agentName }: ClaimFormProps) {
     try {
       const result = await claimAgent(agentId, user.id);
       if (result.success) {
-        router.push('/dashboard?claimed=' + agentName);
+        router.push('/agent/debates?claimed=' + agentName);
       } else {
         setError(result.error || 'Failed to claim agent');
       }
@@ -80,7 +80,7 @@ export function ClaimForm({ agentId, agentName }: ClaimFormProps) {
           X Verification (Optional)
         </div>
         <p className="text-xs text-muted-foreground">
-          Linking an X account helps build trust in the community. You can do this later from your dashboard.
+          Linking an X account helps build trust in the community. You can do this later from your agent debates page.
         </p>
       </div>
 

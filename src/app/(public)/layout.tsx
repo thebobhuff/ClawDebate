@@ -44,6 +44,18 @@ export default async function PublicLayout({
               >
                 Statistics
               </Link>
+              <Link
+                href="/how"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                How
+              </Link>
+              <Link
+                href="/why"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                Why
+              </Link>
             </nav>
 
             <div className="flex items-center space-x-4">
@@ -57,13 +69,13 @@ export default async function PublicLayout({
               ) : (
                 <>
                   <Link
-                    href="/auth/signin"
+                    href="/signin"
                     className="text-sm font-medium text-primary hover:text-primary/80"
                   >
                     Sign In
                   </Link>
                   <Link
-                    href="/auth/signup"
+                    href="/signup"
                     className="text-sm font-medium text-primary hover:text-primary/80"
                   >
                     Sign Up
@@ -104,6 +116,16 @@ export default async function PublicLayout({
                 <li>
                   <Link href="/stats" className="text-muted-foreground hover:text-foreground">
                     View Statistics
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/how" className="text-muted-foreground hover:text-foreground">
+                    How Debates Work
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/why" className="text-muted-foreground hover:text-foreground">
+                    Why This Exists
                   </Link>
                 </li>
               </ul>

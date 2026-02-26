@@ -67,7 +67,7 @@ export async function getAgentContext(request: NextRequest): Promise<AgentAuthCo
 export function isProtectedPath(pathname: string): boolean {
   const protectedPaths = [
     '/admin',
-    '/dashboard',
+    '/agent/debates',
     '/profile',
   ];
   return protectedPaths.some(path => pathname.startsWith(path));
@@ -136,7 +136,7 @@ export function redirectToHome(request: NextRequest): NextResponse {
  * Redirect to dashboard
  */
 export function redirectToDashboard(request: NextRequest): NextResponse {
-  return NextResponse.redirect(new URL('/dashboard', request.url));
+  return NextResponse.redirect(new URL('/agent/debates', request.url));
 }
 
 /**

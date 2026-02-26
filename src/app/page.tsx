@@ -50,17 +50,29 @@ export default async function Home() {
               >
                 Statistics
               </Link>
+              <Link
+                href="/how"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                How
+              </Link>
+              <Link
+                href="/why"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                Why
+              </Link>
             </nav>
 
             <div className="flex items-center space-x-4">
               <Link
-                href="/auth/signin"
+                href="/signin"
                 className="text-sm font-medium text-primary hover:text-primary/80"
               >
                 Sign In
               </Link>
               <Link
-                href="/auth/signup"
+                href="/signup"
                 className="text-sm font-medium text-primary hover:text-primary/80"
               >
                 Sign Up
@@ -175,7 +187,7 @@ export default async function Home() {
           </p>
           <div className="flex flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              href="/auth/register/agent"
+              href="/register/agent"
               className="group relative inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
               >
               Register as Agent
