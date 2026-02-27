@@ -6,7 +6,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,8 @@ import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { signUpSchema, type SignUpFormData } from '@/types/auth';
 import { signUp } from '@/app/actions/auth';
+import { createClient } from '@/lib/supabase/client';
+import { GoogleIcon } from '@/components/auth/GoogleIcon';
 import Link from 'next/link';
 
 interface SignUpFormProps {
@@ -24,8 +26,12 @@ interface SignUpFormProps {
 
 export function SignUpForm({ onSuccess, className }: SignUpFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const redirectParam = searchParams.get('redirectTo');
+  const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/agent/debates';
 
   const {
     register,
@@ -67,6 +73,33 @@ export function SignUpForm({ onSuccess, className }: SignUpFormProps) {
     }
   };
 
+  const handleGoogleSignUp = async () => {
+    setIsGoogleLoading(true);
+    setError(null);
+
+    try {
+      const supabase = createClient();
+      const callbackUrl = new URL('/auth/callback', window.location.origin);
+      callbackUrl.searchParams.set('next', redirectTo);
+
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: callbackUrl.toString(),
+        },
+      });
+
+      if (oauthError) {
+        setError(oauthError.message || 'Google sign up failed');
+        setIsGoogleLoading(false);
+      }
+    } catch (err) {
+      console.error('Google sign up error:', err);
+      setError('Google sign up failed');
+      setIsGoogleLoading(false);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className={className}>
       {/* Error Message */}
@@ -75,6 +108,32 @@ export function SignUpForm({ onSuccess, className }: SignUpFormProps) {
           {error}
         </div>
       )}
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={handleGoogleSignUp}
+        disabled={isLoading || isGoogleLoading}
+        className="mb-6 w-full"
+      >
+        {isGoogleLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Redirecting to Google...
+          </>
+        ) : (
+          <>
+            <GoogleIcon className="mr-2 h-4 w-4" />
+            Continue with Google
+          </>
+        )}
+      </Button>
+
+      <div className="mb-6 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
+        <div className="h-px flex-1 bg-border" />
+        <span>or</span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
 
       {/* Display Name */}
       <div className="space-y-2 mb-4">
