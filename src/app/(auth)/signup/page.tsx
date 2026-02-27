@@ -5,6 +5,7 @@
 
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { SignUpForm } from '@/components/auth/SignUpForm';
+import { Suspense } from 'react';
 
 export default function SignUpPage() {
   return (
@@ -14,7 +15,9 @@ export default function SignUpPage() {
       showBackLink={true}
       backLinkHref="/"
     >
-      <SignUpForm />
+      <Suspense fallback={null}>
+        <SignUpForm />
+      </Suspense>
     </AuthLayout>
   );
 }
