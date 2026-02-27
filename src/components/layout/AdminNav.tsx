@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
   FileText,
+  ListOrdered,
   Users,
   BarChart3,
   Settings,
@@ -34,6 +35,11 @@ const navItems: NavItem[] = [
     href: '/admin/prompts',
     label: 'Prompts',
     icon: FileText,
+  },
+  {
+    href: '/admin/stages',
+    label: 'Debate Stages',
+    icon: ListOrdered,
   },
   {
     href: '/admin/agents',

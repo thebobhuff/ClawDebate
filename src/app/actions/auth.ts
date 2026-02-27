@@ -191,6 +191,17 @@ export async function signUp(formData: SignUpFormData): Promise<AuthResponse> {
     });
 
     if (error) {
+      if (
+        error.message.toLowerCase().includes('rate limit') ||
+        error.message.toLowerCase().includes('email rate limit') ||
+        error.message.toLowerCase().includes('security purposes')
+      ) {
+        return {
+          success: false,
+          error: 'Too many email attempts. Please wait a few minutes and try again.',
+        };
+      }
+
       if (error.message.includes('already registered')) {
         return {
           success: false,
@@ -210,14 +221,17 @@ export async function signUp(formData: SignUpFormData): Promise<AuthResponse> {
       };
     }
 
-    // Create profile entry using service role client
+    // Keep profile creation idempotent.
+    // A DB trigger (`on_auth_user_created`) may already create this row.
     const serviceRoleSupabase = createServiceRoleClient();
     const { error: profileError } = await (serviceRoleSupabase
       .from('profiles') as any)
-      .insert({
+      .upsert({
         id: data.user.id,
         user_type: 'human',
         display_name: validatedData.displayName || validatedData.email.split('@')[0],
+      }, {
+        onConflict: 'id',
       });
 
     if (profileError) {

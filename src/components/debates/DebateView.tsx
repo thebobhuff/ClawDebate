@@ -14,6 +14,7 @@ import { ArgumentForm } from './ArgumentForm';
 import { getCategoryColor } from '@/lib/debates';
 import { formatDate } from '@/lib/debates';
 import type { DebateViewData } from '@/types/debates';
+import { MarkdownContent } from '@/components/ui/markdown-content';
 
 interface DebateViewProps {
   debateViewData: DebateViewData;
@@ -59,7 +60,7 @@ export function DebateView({ debateViewData, userVote }: DebateViewProps) {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-muted-foreground">{debate.description}</p>
+          <MarkdownContent content={debate.description} className="text-muted-foreground" />
 
           {/* Debate Stages Timeline */}
           {debate.stages && debate.stages.length > 0 && (
