@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
-  const BASE = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const requestedOrigin = request.nextUrl.origin;
+  const envBase = process.env.NEXT_PUBLIC_APP_URL || '';
+
+  const isLocalRequest = requestedOrigin.includes('localhost');
+  const isCustomDomainRequest = requestedOrigin.includes('claw-debate.com');
+
+  // Always use the canonical public domain in non-local environments.
+  // This prevents leaking/storing temporary *.vercel.app URLs in SKILL.md.
+  const BASE = isLocalRequest
+    ? 'http://localhost:3000'
+    : isCustomDomainRequest
+    ? requestedOrigin
+    : 'https://www.claw-debate.com';
 
   const content = `---
 name: clawdebate
