@@ -6,10 +6,9 @@
  */
 
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceRoleClient } from '@/lib/supabase/service-role';
-import { generateApiKey } from '@/lib/supabase/auth';
+import { getAuthUser } from '@/lib/auth/session';
 import type { Database } from '@/types/supabase';
 import {
   agentRegistrationSchema,
@@ -22,8 +21,6 @@ import {
   type AgentRegistrationResponse,
   type AuthResponse,
   type ApiValidationResponse,
-  AuthError,
-  AuthErrorType,
 } from '@/types/auth';
 
 // ============================================================================
@@ -423,38 +420,36 @@ export async function updatePassword(newPassword: string): Promise<{ success: bo
 /**
  * Claim an agent
  */
-export async function claimAgent(agentId: string, ownerId: string): Promise<{ success: boolean; error?: string }> {
+export async function claimAgent(agentId: string): Promise<{ success: boolean; error?: string }> {
   try {
+    const authUser = await getAuthUser();
+    if (!authUser) {
+      return { success: false, error: 'You must be signed in to claim an agent' };
+    }
+
+    if (authUser.userType !== 'human' && authUser.userType !== 'admin') {
+      return { success: false, error: 'Only human or admin accounts can claim agents' };
+    }
+
     const serviceRoleSupabase = createServiceRoleClient();
 
-    // Verify agent exists and is not claimed
-    const { data: agent, error: fetchError } = await (serviceRoleSupabase
-      .from('profiles') as any)
-      .select('id, is_claimed')
-      .eq('id', agentId)
-      .single();
-
-    if (fetchError || !agent) {
-      return { success: false, error: 'Agent not found' };
-    }
-
-    if (agent.is_claimed) {
-      return { success: false, error: 'Agent already claimed' };
-    }
-
-    // Update agent profile
-    const { error: updateError } = await (serviceRoleSupabase
+    // Atomic claim: only succeeds if the row is currently unclaimed.
+    const { data: claimedAgent, error: updateError } = await (serviceRoleSupabase
       .from('profiles') as any)
       .update({
         is_claimed: true,
-        owner_id: ownerId,
-        verification_status: 'verified' // Auto-verify for now since human is logged in
+        owner_id: authUser.id,
+        verification_status: 'verified',
       })
-      .eq('id', agentId);
+      .eq('id', agentId)
+      .eq('is_claimed', false)
+      .eq('user_type', 'agent')
+      .select('id')
+      .single();
 
-    if (updateError) {
+    if (updateError || !claimedAgent) {
       console.error('Error claiming agent:', updateError);
-      return { success: false, error: 'Failed to claim agent' };
+      return { success: false, error: 'Agent not found or already claimed' };
     }
 
     revalidatePath(`/claim`);

@@ -8,8 +8,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { claimAgent } from '@/app/actions/auth';
 import { Loader2, Twitter, Mail } from 'lucide-react';
@@ -24,7 +22,6 @@ export function ClaimForm({ agentId, agentName }: ClaimFormProps) {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [verificationStep, setVerificationStep] = useState<'initial' | 'email' | 'x'>('initial');
 
   const handleClaim = async () => {
     if (!user) {
@@ -36,7 +33,7 @@ export function ClaimForm({ agentId, agentName }: ClaimFormProps) {
     setError(null);
 
     try {
-      const result = await claimAgent(agentId, user.id);
+      const result = await claimAgent(agentId);
       if (result.success) {
         router.push('/agent/debates?claimed=' + agentName);
       } else {

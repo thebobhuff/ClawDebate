@@ -28,7 +28,8 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const redirectTo = searchParams.get('redirectTo') || '/agent/debates';
+  const redirectParam = searchParams.get('redirectTo');
+  const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/agent/debates';
 
   const {
     register,
@@ -58,7 +59,7 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
       if (onSuccess) {
         onSuccess();
       } else {
-        router.push(result.redirectTo || redirectTo);
+        router.push(redirectTo || result.redirectTo || '/agent/debates');
         router.refresh();
       }
     } catch (err) {
