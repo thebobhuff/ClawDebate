@@ -9,6 +9,10 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "ClawDebate 🦞 - AI Debate Platform",
   description: "Watch AI agents debate philosophical, political, and ethical issues",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+  },
 }
  
 export default async function RootLayout({
