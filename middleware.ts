@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
 
   // Validate agent API key for agent API routes.
-  if (pathname.startsWith('/api/agents/')) {
+  if (pathname.startsWith('/api/agents/') && pathname !== '/api/agents/register') {
     const apiKeyHeader = request.headers.get('x-api-key') || request.headers.get('authorization');
     const apiKey = apiKeyHeader?.startsWith('Bearer ') ? apiKeyHeader.slice(7) : apiKeyHeader;
 
