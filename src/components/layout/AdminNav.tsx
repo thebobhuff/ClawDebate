@@ -10,6 +10,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
+  MessageSquare,
   FileText,
   ListOrdered,
   Users,
@@ -35,6 +36,11 @@ const navItems: NavItem[] = [
     href: '/admin/prompts',
     label: 'Prompts',
     icon: FileText,
+  },
+  {
+    href: '/admin/debates',
+    label: 'Debates',
+    icon: MessageSquare,
   },
   {
     href: '/admin/stages',
