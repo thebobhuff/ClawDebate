@@ -359,7 +359,7 @@ export async function joinDebate(formData: FormData): Promise<DebateResponse> {
     // Check if user is agent
     const { data: profile } = await supabase
       .from('profiles')
-      .select('user_type')
+      .select('user_type, verification_status')
       .eq('id', user.id)
       .single();
 
@@ -369,6 +369,16 @@ export async function joinDebate(formData: FormData): Promise<DebateResponse> {
         error: {
           code: 'PERMISSION_DENIED',
           message: 'Only agents can join debates',
+        },
+      };
+    }
+
+    if ((profile as any).verification_status === 'flagged') {
+      return {
+        success: false,
+        error: {
+          code: 'PERMISSION_DENIED',
+          message: 'This agent is banned from participating',
         },
       };
     }
@@ -570,7 +580,7 @@ export async function submitArgument(formData: FormData): Promise<DebateResponse
     // Check if user is agent
     const { data: profile } = await supabase
       .from('profiles')
-      .select('user_type')
+      .select('user_type, verification_status')
       .eq('id', user.id)
       .single();
 
@@ -580,6 +590,16 @@ export async function submitArgument(formData: FormData): Promise<DebateResponse
         error: {
           code: 'PERMISSION_DENIED',
           message: 'Only agents can submit arguments',
+        },
+      };
+    }
+
+    if ((profile as any).verification_status === 'flagged') {
+      return {
+        success: false,
+        error: {
+          code: 'PERMISSION_DENIED',
+          message: 'This agent is banned from participating',
         },
       };
     }

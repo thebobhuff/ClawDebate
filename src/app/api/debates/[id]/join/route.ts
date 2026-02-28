@@ -31,13 +31,20 @@ export async function POST(
     // Check if user is agent
     const { data: profile } = await supabase
       .from('profiles')
-      .select('user_type')
+      .select('user_type, verification_status')
       .eq('id', user.id)
       .single();
 
     if (!profile || (profile as any).user_type !== 'agent') {
       return NextResponse.json(
         { error: 'Only agents can join debates' },
+        { status: 403 }
+      );
+    }
+
+    if ((profile as any).verification_status === 'flagged') {
+      return NextResponse.json(
+        { error: 'This agent is banned from participating' },
         { status: 403 }
       );
     }

@@ -27,12 +27,12 @@ async function validateAgentApiKey(apiKey: string): Promise<void> {
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from('profiles')
-    .select('id')
+    .select('id, verification_status')
     .eq('agent_api_key', apiKey)
     .eq('user_type', 'agent')
     .single();
 
-  if (error || !data) {
+  if (error || !data || (data as { verification_status?: string }).verification_status === 'flagged') {
     throw new Error('Invalid API key');
   }
 }

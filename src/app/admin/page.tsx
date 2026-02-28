@@ -4,8 +4,6 @@
  */
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { getAllPrompts } from '@/lib/supabase/prompts';
 import {
   FileText,
   MessageSquare,
@@ -17,28 +15,16 @@ import {
   Vote,
 } from 'lucide-react';
 import Link from 'next/link';
-import { TotalDebatesWidget } from '@/components/stats/widgets/TotalDebatesWidget';
-import { ActiveDebatesWidget } from '@/components/stats/widgets/ActiveDebatesWidget';
-import { TotalAgentsWidget } from '@/components/stats/widgets/TotalAgentsWidget';
-import { TotalVotesWidget } from '@/components/stats/widgets/TotalVotesWidget';
+import { getAllPrompts } from '@/lib/supabase/prompts';
 import { RecentActivityWidget } from '@/components/stats/widgets/RecentActivityWidget';
 
 export default async function AdminDashboardPage() {
-  // Fetch statistics
   const allPrompts = await getAllPrompts();
-  
+
   const totalPrompts = allPrompts.length;
   const activePrompts = (allPrompts as any[]).filter((p) => p.status === 'active').length;
   const draftPrompts = (allPrompts as any[]).filter((p) => p.status === 'draft').length;
   const archivedPrompts = (allPrompts as any[]).filter((p) => p.status === 'archived').length;
-
-  // Platform statistics (placeholder values - would be fetched from stats API)
-  const platformStats = {
-    totalDebates: 156,
-    activeDebates: 23,
-    totalAgents: 48,
-    totalVotes: 1243,
-  };
 
   const statCards = [
     {
@@ -84,13 +70,6 @@ export default async function AdminDashboardPage() {
       color: 'bg-primary text-primary-foreground',
     },
     {
-      title: 'Manage Prompts',
-      description: 'View and manage all prompts',
-      icon: FileText,
-      href: '/admin/prompts',
-      color: 'bg-blue-600 text-white',
-    },
-    {
       title: 'Moderate Debates',
       description: 'Edit debates, arguments, and participants',
       icon: MessageSquare,
@@ -115,15 +94,13 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground mt-2">
-          Welcome to the ClawDebate admin panel. Here's an overview of your platform.
+          Welcome to the ClawDebate admin panel. Here&apos;s an overview of your platform.
         </p>
       </div>
 
-      {/* Statistics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card) => {
           const Icon = card.icon;
@@ -131,9 +108,7 @@ export default async function AdminDashboardPage() {
             <Link key={card.title} href={card.href}>
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    {card.title}
-                  </CardTitle>
+                  <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
                   <div className={`p-2 rounded-full ${card.bgColor}`}>
                     <Icon className={`h-4 w-4 ${card.color}`} />
                   </div>
@@ -147,7 +122,6 @@ export default async function AdminDashboardPage() {
         })}
       </div>
 
-      {/* Quick Actions */}
       <Card>
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
@@ -164,9 +138,7 @@ export default async function AdminDashboardPage() {
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold">{action.title}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {action.description}
-                      </p>
+                      <p className="text-sm text-muted-foreground">{action.description}</p>
                     </div>
                     <ArrowRight className="h-5 w-5 text-muted-foreground" />
                   </div>
@@ -177,7 +149,6 @@ export default async function AdminDashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Recent Activity */}
       <Card>
         <CardHeader>
           <CardTitle>Recent Activity</CardTitle>
@@ -188,34 +159,23 @@ export default async function AdminDashboardPage() {
               {
                 id: '1',
                 type: 'debate_created',
-                description: 'New debate "AI Ethics" was created',
+                description: 'New debate was created',
                 actorId: 'system',
                 actorName: 'System',
                 targetId: 'debate-1',
                 targetType: 'debate',
-                targetName: 'AI Ethics',
+                targetName: 'Debate',
                 createdAt: new Date(Date.now() - 1000 * 60 * 10),
               },
               {
                 id: '2',
-                type: 'vote_cast',
-                description: 'Vote cast',
-                actorId: 'user-1',
-                actorName: 'User',
-                targetId: 'debate-1',
-                targetType: 'debate',
-                targetName: 'AI Ethics',
-                createdAt: new Date(Date.now() - 1000 * 60 * 25),
-              },
-              {
-                id: '3',
                 type: 'agent_registered',
                 description: 'New agent registered',
                 actorId: 'agent-1',
                 actorName: 'System',
                 targetId: 'agent-1',
                 targetType: 'agent',
-                targetName: 'NewAgent',
+                targetName: 'Agent',
                 createdAt: new Date(Date.now() - 1000 * 60 * 45),
               },
             ]}
@@ -224,26 +184,23 @@ export default async function AdminDashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Platform Stats Link */}
       <Card>
         <CardHeader>
           <CardTitle>Platform Statistics</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-lg border">
-              <div className="flex items-center space-x-3">
-                <Vote className="h-8 w-8 text-orange-500" />
-                <div>
-                  <h4 className="font-semibold">View Full Statistics</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Access detailed platform analytics, charts, and reports
-                  </p>
-                </div>
+          <Link href="/stats" className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent">
+            <div className="flex items-center space-x-3">
+              <Vote className="h-8 w-8 text-orange-500" />
+              <div>
+                <h4 className="font-semibold">View Full Statistics</h4>
+                <p className="text-sm text-muted-foreground">
+                  Access detailed platform analytics, charts, and reports.
+                </p>
               </div>
-              <ArrowRight className="h-5 w-5 text-muted-foreground" />
             </div>
-          </div>
+            <ArrowRight className="h-5 w-5 text-muted-foreground" />
+          </Link>
         </CardContent>
       </Card>
     </div>

@@ -359,7 +359,7 @@ export async function validateAPIKey(apiKey: string): Promise<ApiValidationRespo
       .eq('user_type', 'agent')
       .single();
 
-    if (error || !agent) {
+    if (error || !agent || (agent as any).verification_status === 'flagged') {
       return {
         valid: false,
         error: 'Invalid API key',
