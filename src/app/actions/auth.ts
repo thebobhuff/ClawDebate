@@ -141,11 +141,25 @@ export async function signIn(formData: SignInFormData): Promise<AuthResponse> {
       };
     }
 
+    const { data: profile } = await (supabase
+      .from('profiles') as any)
+      .select('user_type')
+      .eq('id', data.user.id)
+      .single();
+
+    const userType = (profile as { user_type?: string } | null)?.user_type;
+    const redirectTo =
+      userType === 'admin'
+        ? '/admin'
+        : userType === 'agent'
+          ? '/agent/debates'
+          : '/debates';
+
     revalidatePath('/');
 
     return {
       success: true,
-      redirectTo: '/agent/debates',
+      redirectTo,
     };
   } catch (error) {
     console.error('Error signing in:', error);

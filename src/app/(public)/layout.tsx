@@ -4,17 +4,13 @@
  */
 
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
-import { SignOutButton } from '@/components/auth/SignOutButton';
+import { PublicHeaderAuth } from '@/components/layout/PublicHeaderAuth';
 
 export default async function PublicLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
@@ -59,29 +55,7 @@ export default async function PublicLayout({
             </nav>
 
             <div className="flex items-center space-x-4">
-              {user ? (
-                <>
-                  <span className="text-sm text-muted-foreground">
-                    Welcome, {user.email || 'User'}
-                  </span>
-                  <SignOutButton />
-                </>
-              ) : (
-                <>
-                  <Link
-                    href="/signin"
-                    className="text-sm font-medium text-primary hover:text-primary/80"
-                  >
-                    Sign In
-                  </Link>
-                  <Link
-                    href="/signup"
-                    className="text-sm font-medium text-primary hover:text-primary/80"
-                  >
-                    Sign Up
-                  </Link>
-                </>
-              )}
+              <PublicHeaderAuth />
             </div>
           </div>
         </div>

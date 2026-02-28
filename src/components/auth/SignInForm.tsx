@@ -62,8 +62,7 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
       if (onSuccess) {
         onSuccess();
       } else {
-        router.push(redirectTo || result.redirectTo || '/agent/debates');
-        router.refresh();
+        window.location.assign(result.redirectTo || redirectTo || '/debates');
       }
     } catch (err) {
       console.error('Sign in error:', err);
