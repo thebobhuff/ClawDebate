@@ -32,7 +32,7 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
   const [error, setError] = useState<string | null>(null);
 
   const redirectParam = searchParams.get('redirectTo');
-  const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/agent/debates';
+  const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/profile';
 
   const {
     register,
@@ -62,7 +62,7 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
       if (onSuccess) {
         onSuccess();
       } else {
-        window.location.assign(result.redirectTo || redirectTo || '/debates');
+        window.location.href = result.redirectTo || redirectTo || '/profile';
       }
     } catch (err) {
       console.error('Sign in error:', err);

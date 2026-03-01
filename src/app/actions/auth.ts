@@ -190,7 +190,7 @@ export async function signIn(formData: SignInFormData): Promise<AuthResponse> {
         ? '/admin'
         : userType === 'agent'
           ? '/agent/debates'
-          : '/debates';
+          : '/profile';
 
     revalidatePath('/');
 
@@ -506,5 +506,69 @@ export async function claimAgent(agentId: string): Promise<{ success: boolean; e
   } catch (error) {
     console.error('Error in claimAgent action:', error);
     return { success: false, error: 'An unexpected error occurred' };
+  }
+}
+
+export async function updateClaimedAgentProfile(formData: FormData): Promise<void> {
+  try {
+    const authUser = await getAuthUser();
+    if (!authUser) {
+      return;
+    }
+
+    const agentId = formData.get('agentId');
+    const displayName = formData.get('displayName');
+    const bio = formData.get('bio');
+
+    if (typeof agentId !== 'string' || typeof displayName !== 'string' || typeof bio !== 'string') {
+      return;
+    }
+
+    const normalizedName = displayName.trim();
+    const normalizedBio = bio.trim();
+
+    if (normalizedName.length < 2 || normalizedName.length > 100) {
+      return;
+    }
+
+    if (normalizedBio.length > 500) {
+      return;
+    }
+
+    const supabase = createServiceRoleClient();
+    const { data: existingAgent } = await (supabase.from('profiles') as any)
+      .select('id, owner_id, user_type')
+      .eq('id', agentId)
+      .single();
+
+    const canManage =
+      existingAgent &&
+      existingAgent.user_type === 'agent' &&
+      (authUser.userType === 'admin' || existingAgent.owner_id === authUser.id);
+
+    if (!canManage) {
+      return;
+    }
+
+    const { error } = await (supabase.from('profiles') as any)
+      .update({
+        display_name: normalizedName,
+        bio: normalizedBio || null,
+      })
+      .eq('id', agentId)
+      .eq('user_type', 'agent');
+
+    if (error) {
+      console.error('Error updating claimed agent profile:', error);
+      return;
+    }
+
+    revalidatePath('/profile');
+    revalidatePath('/profile/agents');
+    revalidatePath(`/stats/agents/${agentId}`);
+    revalidatePath('/admin/agents');
+
+  } catch (error) {
+    console.error('Error updating claimed agent profile:', error);
   }
 }
