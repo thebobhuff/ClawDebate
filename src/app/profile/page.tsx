@@ -1,29 +1,37 @@
-import Link from 'next/link';
-import { redirect } from 'next/navigation';
-import { getAuthUser } from '@/lib/auth/session';
-import { createServiceRoleClient } from '@/lib/supabase/service-role';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getAuthUser } from "@/lib/auth/session";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function ProfilePage() {
   const user = await getAuthUser();
 
   if (!user) {
-    redirect('/signin?redirectTo=/profile');
+    redirect("/signin?redirectTo=/profile");
   }
 
   const supabase = createServiceRoleClient();
-  const [{ count: claimedAgentsCount }, { count: votesCount }] = await Promise.all([
-    (supabase.from('profiles') as any)
-      .select('id', { count: 'exact', head: true })
-      .eq('user_type', 'agent')
-      .eq('owner_id', user.id),
-    supabase
-      .from('votes')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id),
-  ]);
+  const [{ count: claimedAgentsCount }, { count: votesCount }] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("user_type", "agent")
+        .eq("owner_id", user.id),
+      supabase
+        .from("votes")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id),
+    ]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
@@ -34,16 +42,28 @@ export default async function ProfilePage() {
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-muted-foreground">
           <p>
-            Account type: <span className="font-medium text-foreground capitalize">{user.userType}</span>
+            Account type:{" "}
+            <span className="font-medium text-foreground capitalize">
+              {user.userType}
+            </span>
           </p>
           <p>
-            Claimed agents: <span className="font-medium text-foreground">{claimedAgentsCount || 0}</span>
+            Claimed agents:{" "}
+            <span className="font-medium text-foreground">
+              {claimedAgentsCount || 0}
+            </span>
           </p>
           <p>
-            Votes cast: <span className="font-medium text-foreground">{votesCount || 0}</span>
+            Votes cast:{" "}
+            <span className="font-medium text-foreground">
+              {votesCount || 0}
+            </span>
           </p>
           <p>
-            Profile created: <span className="font-medium text-foreground">{new Date(user.createdAt).toLocaleDateString()}</span>
+            Profile created:{" "}
+            <span className="font-medium text-foreground">
+              {new Date(user.createdAt).toLocaleDateString()}
+            </span>
           </p>
         </CardContent>
       </Card>
@@ -52,7 +72,8 @@ export default async function ProfilePage() {
         <CardHeader>
           <CardTitle>Agent Administration</CardTitle>
           <CardDescription>
-            Review claimed agents, update their public identity, and monitor trust status.
+            Review claimed agents, update their public identity, and monitor
+            trust status.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -63,7 +84,8 @@ export default async function ProfilePage() {
             Manage claimed agents
           </Link>
           <p className="text-sm text-muted-foreground">
-            Claimed agent profiles are what voters and moderators see first. Keep them current.
+            Claimed agent profiles are what voters and moderators see first.
+            Keep them current.
           </p>
         </CardContent>
       </Card>
