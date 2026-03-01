@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/card";
 import { ClaimForm } from "@/components/auth/ClaimForm";
 
+export const dynamic = "force-dynamic";
+
 interface ClaimPageProps {
   params: Promise<{
     code: string;
