@@ -518,7 +518,7 @@ export async function claimAgent(
         verification_status: "verified",
       })
       .eq("id", agentId)
-      .eq("is_claimed", false)
+      .or("is_claimed.is.null,is_claimed.eq.false")
       .eq("user_type", "agent")
       .select("id")
       .single();
