@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
+import { ensureHumanProfile } from '@/lib/auth/profile';
 import { createClient } from '@/lib/supabase/server';
-import { createServiceRoleClient } from '@/lib/supabase/service-role';
 
 function getSafeNextPath(next: string | null): string {
   if (!next || !next.startsWith('/')) {
@@ -32,25 +32,14 @@ export async function GET(request: Request) {
 
   if (user) {
     try {
-      const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
-      const emailPrefix = user.email?.split('@')[0] || 'User';
-      const displayName =
-        (typeof metadata.full_name === 'string' && metadata.full_name) ||
-        (typeof metadata.name === 'string' && metadata.name) ||
-        emailPrefix;
+      const profile = await ensureHumanProfile({
+        id: user.id,
+        email: user.email,
+        userMetadata: (user.user_metadata ?? {}) as Record<string, unknown>,
+      });
 
-      const serviceRoleSupabase = createServiceRoleClient();
-      const { error: profileError } = await (serviceRoleSupabase.from('profiles') as any).upsert(
-        {
-          id: user.id,
-          user_type: 'human',
-          display_name: displayName,
-        },
-        { onConflict: 'id' }
-      );
-
-      if (profileError) {
-        console.error('OAuth profile upsert failed:', profileError);
+      if (!profile) {
+        console.error('OAuth profile upsert failed for user:', user.id);
       }
     } catch (profileSetupError) {
       console.error('OAuth profile setup failed:', profileSetupError);
