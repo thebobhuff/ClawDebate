@@ -3,21 +3,21 @@
  * Sign in form component
  */
 
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Loader2 } from 'lucide-react';
-import { signInSchema, type SignInFormData } from '@/types/auth';
-import { signIn } from '@/app/actions/auth';
-import { createClient } from '@/lib/supabase/client';
-import { GoogleIcon } from '@/components/auth/GoogleIcon';
-import Link from 'next/link';
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
+import { signInSchema, type SignInFormData } from "@/types/auth";
+import { signIn } from "@/app/actions/auth";
+import { createClient } from "@/lib/supabase/client";
+import { GoogleIcon } from "@/components/auth/GoogleIcon";
+import Link from "next/link";
 
 interface SignInFormProps {
   onSuccess?: () => void;
@@ -31,8 +31,9 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const redirectParam = searchParams.get('redirectTo');
-  const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/profile';
+  const redirectParam = searchParams.get("redirectTo");
+  const redirectTo =
+    redirectParam && redirectParam.startsWith("/") ? redirectParam : "/profile";
 
   const {
     register,
@@ -41,8 +42,8 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
   } = useForm<SignInFormData>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: "",
+      password: "",
     },
   });
 
@@ -54,7 +55,7 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
       const result = await signIn(data);
 
       if (!result.success) {
-        setError(result.error || 'Sign in failed');
+        setError(result.error || "Sign in failed");
         setIsLoading(false);
         return;
       }
@@ -62,11 +63,15 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
       if (onSuccess) {
         onSuccess();
       } else {
-        window.location.href = result.redirectTo || redirectTo || '/profile';
+        // Explicit redirectTo from URL (e.g. /claim/xxx) takes priority over
+        // the server action's default route for the user type.
+        window.location.href = redirectParam
+          ? redirectTo
+          : result.redirectTo || "/profile";
       }
     } catch (err) {
-      console.error('Sign in error:', err);
-      setError('An unexpected error occurred');
+      console.error("Sign in error:", err);
+      setError("An unexpected error occurred");
       setIsLoading(false);
     }
   };
@@ -77,23 +82,23 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
 
     try {
       const supabase = createClient();
-      const callbackUrl = new URL('/auth/callback', window.location.origin);
-      callbackUrl.searchParams.set('next', redirectTo);
+      const callbackUrl = new URL("/auth/callback", window.location.origin);
+      callbackUrl.searchParams.set("next", redirectTo);
 
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+        provider: "google",
         options: {
           redirectTo: callbackUrl.toString(),
         },
       });
 
       if (oauthError) {
-        setError(oauthError.message || 'Google sign in failed');
+        setError(oauthError.message || "Google sign in failed");
         setIsGoogleLoading(false);
       }
     } catch (err) {
-      console.error('Google sign in error:', err);
-      setError('Google sign in failed');
+      console.error("Google sign in error:", err);
+      setError("Google sign in failed");
       setIsGoogleLoading(false);
     }
   };
@@ -141,7 +146,7 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
           type="email"
           placeholder="you@example.com"
           disabled={isLoading}
-          {...register('email')}
+          {...register("email")}
           className="bg-background"
         />
         {errors.email && (
@@ -165,7 +170,7 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
           type="password"
           placeholder="•••••••••"
           disabled={isLoading}
-          {...register('password')}
+          {...register("password")}
           className="bg-background"
         />
         {errors.password && (
@@ -174,24 +179,20 @@ export function SignInForm({ onSuccess, className }: SignInFormProps) {
       </div>
 
       {/* Submit Button */}
-      <Button
-        type="submit"
-        disabled={isLoading}
-        className="w-full"
-      >
+      <Button type="submit" disabled={isLoading} className="w-full">
         {isLoading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Signing in...
           </>
         ) : (
-          'Sign In'
+          "Sign In"
         )}
       </Button>
 
       {/* Sign Up Link */}
       <div className="mt-6 text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{' '}
+        Don&apos;t have an account?{" "}
         <Link
           href="/signup"
           className="font-medium text-primary hover:underline"
