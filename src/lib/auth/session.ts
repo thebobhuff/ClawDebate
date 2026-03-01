@@ -3,11 +3,11 @@
  * Helper functions for managing authentication sessions
  */
 
-import { cookies } from 'next/headers';
-import { createClient } from '@/lib/supabase/server';
-import { ensureHumanProfile } from '@/lib/auth/profile';
-import type { AuthUser, AuthSession } from '@/types/auth';
-import type { Database } from '@/types/supabase';
+import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
+import { ensureHumanProfile } from "@/lib/auth/profile";
+import type { AuthUser, AuthSession } from "@/types/auth";
+import type { Database } from "@/types/supabase";
 
 /**
  * Get the current authenticated user from session
@@ -15,7 +15,10 @@ import type { Database } from '@/types/supabase';
 export async function getAuthUser(): Promise<AuthUser | null> {
   try {
     const supabase = await createClient();
-    const { data: { user }, error } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
 
     if (error || !user) {
       return null;
@@ -23,12 +26,14 @@ export async function getAuthUser(): Promise<AuthUser | null> {
 
     // Fetch user profile
     const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
       .single();
 
-    let profileData = profile as Database['public']['Tables']['profiles']['Row'] | null;
+    let profileData = profile as
+      | Database["public"]["Tables"]["profiles"]["Row"]
+      | null;
 
     if (profileError || !profileData) {
       profileData = await ensureHumanProfile({
@@ -44,18 +49,21 @@ export async function getAuthUser(): Promise<AuthUser | null> {
 
     return {
       id: user.id,
-      email: user.email || '',
+      email: user.email || "",
       userType: profileData.user_type,
       displayName: profileData.display_name,
       avatarUrl: profileData.avatar_url,
       bio: profileData.bio,
       agentApiKey: profileData.agent_api_key,
-      agentCapabilities: profileData.agent_capabilities as Record<string, any> | null,
+      agentCapabilities: profileData.agent_capabilities as Record<
+        string,
+        any
+      > | null,
       createdAt: profileData.created_at,
       updatedAt: profileData.updated_at,
     };
   } catch (error) {
-    console.error('Error getting auth user:', error);
+    console.error("Error getting auth user:", error);
     return null;
   }
 }
@@ -66,9 +74,20 @@ export async function getAuthUser(): Promise<AuthUser | null> {
 export async function getAuthSession(): Promise<AuthSession | null> {
   try {
     const supabase = await createClient();
-    const { data: { session }, error } = await supabase.auth.getSession();
+    // Validate the user server-side first, then read the session tokens.
+    const {
+      data: { user: authUser },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    if (error || !session) {
+    if (userError || !authUser) {
+      return null;
+    }
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
       return null;
     }
 
@@ -83,7 +102,7 @@ export async function getAuthSession(): Promise<AuthSession | null> {
       expiresAt: session.expires_at || 0,
     };
   } catch (error) {
-    console.error('Error getting auth session:', error);
+    console.error("Error getting auth session:", error);
     return null;
   }
 }
@@ -118,7 +137,10 @@ export async function getUserType(): Promise<string | null> {
 export async function refreshSession(): Promise<AuthSession | null> {
   try {
     const supabase = await createClient();
-    const { data: { session }, error } = await supabase.auth.refreshSession();
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.refreshSession();
 
     if (error || !session) {
       return null;
@@ -135,7 +157,7 @@ export async function refreshSession(): Promise<AuthSession | null> {
       expiresAt: session.expires_at || 0,
     };
   } catch (error) {
-    console.error('Error refreshing session:', error);
+    console.error("Error refreshing session:", error);
     return null;
   }
 }
@@ -158,20 +180,23 @@ export async function isSessionExpired(): Promise<boolean> {
  */
 export async function getSessionCookie() {
   const cookieStore = await cookies();
-  return cookieStore.get('sb-access-token');
+  return cookieStore.get("sb-access-token");
 }
 
 /**
  * Set session cookie (for API key auth)
  */
-export async function setSessionCookie(token: string, expiresIn: number = 3600) {
+export async function setSessionCookie(
+  token: string,
+  expiresIn: number = 3600,
+) {
   const cookieStore = await cookies();
-  cookieStore.set('sb-access-token', token, {
+  cookieStore.set("sb-access-token", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
     maxAge: expiresIn,
-    path: '/',
+    path: "/",
   });
 }
 
@@ -180,7 +205,7 @@ export async function setSessionCookie(token: string, expiresIn: number = 3600) 
  */
 export async function deleteSessionCookie() {
   const cookieStore = await cookies();
-  cookieStore.delete('sb-access-token');
+  cookieStore.delete("sb-access-token");
 }
 
 /**
@@ -188,16 +213,16 @@ export async function deleteSessionCookie() {
  */
 export async function getSessionId(): Promise<string> {
   const cookieStore = await cookies();
-  let sessionId = cookieStore.get('session-id')?.value;
+  let sessionId = cookieStore.get("session-id")?.value;
 
   if (!sessionId) {
     sessionId = crypto.randomUUID();
-    cookieStore.set('session-id', sessionId, {
+    cookieStore.set("session-id", sessionId, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
       maxAge: 60 * 60 * 24 * 30, // 30 days
-      path: '/',
+      path: "/",
     });
   }
 
