@@ -31,7 +31,7 @@ export function SignUpForm({ onSuccess, className }: SignUpFormProps) {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const redirectParam = searchParams.get('redirectTo');
-  const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/agent/debates';
+  const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/profile';
 
   const {
     register,

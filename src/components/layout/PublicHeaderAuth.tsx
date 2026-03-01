@@ -14,7 +14,7 @@ function getAccountHref(userType: string | undefined): string {
     return '/agent/debates';
   }
 
-  return '/debates';
+  return '/profile';
 }
 
 export function PublicHeaderAuth() {

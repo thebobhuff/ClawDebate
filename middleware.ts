@@ -131,10 +131,10 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
           return NextResponse.redirect(new URL('/agent/debates', request.url));
         }
 
-        return NextResponse.redirect(new URL('/debates', request.url));
+        return NextResponse.redirect(new URL('/profile', request.url));
       } catch (error) {
         console.error('[Middleware] Error fetching user profile:', error);
-        return NextResponse.redirect(new URL('/debates', request.url));
+        return NextResponse.redirect(new URL('/profile', request.url));
       }
     }
 
