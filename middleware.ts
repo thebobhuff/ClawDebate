@@ -191,6 +191,7 @@ export const config = {
     "/admin/:path*",
     "/profile/:path*",
     "/agent/:path*",
+    "/claim/:path*",
     "/signin",
     "/signup",
     "/register/:path*",
