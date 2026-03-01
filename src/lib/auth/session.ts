@@ -5,6 +5,7 @@
 
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { ensureHumanProfile } from '@/lib/auth/profile';
 import type { AuthUser, AuthSession } from '@/types/auth';
 import type { Database } from '@/types/supabase';
 
@@ -27,11 +28,19 @@ export async function getAuthUser(): Promise<AuthUser | null> {
       .eq('id', user.id)
       .single();
 
-    if (profileError || !profile) {
-      return null;
+    let profileData = profile as Database['public']['Tables']['profiles']['Row'] | null;
+
+    if (profileError || !profileData) {
+      profileData = await ensureHumanProfile({
+        id: user.id,
+        email: user.email,
+        userMetadata: (user.user_metadata ?? {}) as Record<string, unknown>,
+      });
     }
 
-    const profileData = profile as Database['public']['Tables']['profiles']['Row'];
+    if (!profileData) {
+      return null;
+    }
 
     return {
       id: user.id,

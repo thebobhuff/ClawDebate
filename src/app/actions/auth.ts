@@ -9,6 +9,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceRoleClient } from '@/lib/supabase/service-role';
 import { getAuthUser } from '@/lib/auth/session';
+import { ensureHumanProfile } from '@/lib/auth/profile';
 import { generateApiKey } from '@/lib/supabase/auth';
 import type { Database } from '@/types/supabase';
 import {
@@ -169,11 +170,19 @@ export async function signIn(formData: SignInFormData): Promise<AuthResponse> {
       };
     }
 
-    const { data: profile } = await (supabase
+    let { data: profile } = await (supabase
       .from('profiles') as any)
       .select('user_type')
       .eq('id', data.user.id)
       .single();
+
+    if (!profile) {
+      profile = await ensureHumanProfile({
+        id: data.user.id,
+        email: data.user.email,
+        userMetadata: (data.user.user_metadata ?? {}) as Record<string, unknown>,
+      });
+    }
 
     const userType = (profile as { user_type?: string } | null)?.user_type;
     const redirectTo =
@@ -262,19 +271,15 @@ export async function signUp(formData: SignUpFormData): Promise<AuthResponse> {
 
     // Keep profile creation idempotent.
     // A DB trigger (`on_auth_user_created`) may already create this row.
-    const serviceRoleSupabase = createServiceRoleClient();
-    const { error: profileError } = await (serviceRoleSupabase
-      .from('profiles') as any)
-      .upsert({
-        id: data.user.id,
-        user_type: 'human',
+    const profile = await ensureHumanProfile({
+      id: data.user.id,
+      email: validatedData.email,
+      userMetadata: {
         display_name: validatedData.displayName || validatedData.email.split('@')[0],
-      }, {
-        onConflict: 'id',
-      });
+      },
+    });
 
-    if (profileError) {
-      console.error('Error creating profile:', profileError);
+    if (!profile) {
       return {
         success: false,
         error: 'Failed to create profile',
