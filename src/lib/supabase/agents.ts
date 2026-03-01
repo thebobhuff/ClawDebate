@@ -3,15 +3,17 @@
  * Agent-specific database operations
  */
 
-import { createClient } from './server';
-import { createServiceRoleClient } from './service-role';
-import { generateApiKey } from './auth';
-import type { Database } from '@/types/supabase';
+import { createClient } from "./server";
+import { createServiceRoleClient } from "./service-role";
+import { generateApiKey } from "./auth";
+import type { Database, Json } from "@/types/supabase";
 
-type Profile = Database['public']['Tables']['profiles']['Row'];
-type AgentPerformance = Database['public']['Tables']['agent_performance']['Row'];
-type DebateParticipant = Database['public']['Tables']['debate_participants']['Row'];
-type Argument = Database['public']['Tables']['arguments']['Row'];
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+type AgentPerformance =
+  Database["public"]["Tables"]["agent_performance"]["Row"];
+type DebateParticipant =
+  Database["public"]["Tables"]["debate_participants"]["Row"];
+type Argument = Database["public"]["Tables"]["arguments"]["Row"];
 
 // ============================================================================
 // AGENT PROFILE OPERATIONS
@@ -22,18 +24,18 @@ type Argument = Database['public']['Tables']['arguments']['Row'];
  */
 export async function getAllAgents() {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('user_type', 'agent')
-    .order('created_at', { ascending: false });
-  
+    .from("profiles")
+    .select("*")
+    .eq("user_type", "agent")
+    .order("created_at", { ascending: false });
+
   if (error) {
-    console.error('Error fetching agents:', error);
+    console.error("Error fetching agents:", error);
     return [];
   }
-  
+
   return data || [];
 }
 
@@ -42,40 +44,42 @@ export async function getAllAgents() {
  */
 export async function getAgentById(agentId: string): Promise<Profile | null> {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', agentId)
-    .eq('user_type', 'agent')
+    .from("profiles")
+    .select("*")
+    .eq("id", agentId)
+    .eq("user_type", "agent")
     .single();
-  
+
   if (error) {
-    console.error('Error fetching agent:', error);
+    console.error("Error fetching agent:", error);
     return null;
   }
-  
+
   return data;
 }
 
 /**
  * Get agent by API key
  */
-export async function getAgentByApiKey(apiKey: string): Promise<Profile | null> {
+export async function getAgentByApiKey(
+  apiKey: string,
+): Promise<Profile | null> {
   const supabase = createServiceRoleClient();
-  
+
   const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('agent_api_key', apiKey)
-    .eq('user_type', 'agent')
+    .from("profiles")
+    .select("*")
+    .eq("agent_api_key", apiKey)
+    .eq("user_type", "agent")
     .single();
-  
+
   if (error) {
-    console.error('Error fetching agent by API key:', error);
+    console.error("Error fetching agent by API key:", error);
     return null;
   }
-  
+
   return data;
 }
 
@@ -90,67 +94,73 @@ export async function createAgent(data: {
   capabilities?: Record<string, unknown>;
 }) {
   const supabase = createServiceRoleClient();
-  
+
   // Create auth user
-  const { data: { user }, error: authError } = await supabase.auth.admin.createUser({
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.admin.createUser({
     email: data.email,
     password: data.password,
     email_confirm: true,
   });
-  
+
   if (authError || !user) {
-    console.error('Error creating agent auth user:', authError);
-    throw authError || new Error('Failed to create agent');
+    console.error("Error creating agent auth user:", authError);
+    throw authError || new Error("Failed to create agent");
   }
-  
+
   // Generate API key
   const apiKey = generateApiKey();
-  
+
   // Update profile
-  const { error: profileError } = await (supabase
-    .from('profiles') as any)
+  const { error: profileError } = await supabase
+    .from("profiles")
     .update({
-      user_type: 'agent',
+      user_type: "agent",
       display_name: data.displayName,
       bio: data.bio || null,
       agent_api_key: apiKey,
-      agent_capabilities: data.capabilities || null,
+      agent_capabilities: (data.capabilities as Json) || null,
     })
-    .eq('id', user.id);
-  
+    .eq("id", user.id);
+
   if (profileError) {
-    console.error('Error updating agent profile:', profileError);
+    console.error("Error updating agent profile:", profileError);
     // Rollback auth user creation
     await supabase.auth.admin.deleteUser(user.id);
     throw profileError;
   }
-  
+
   return { user, apiKey };
 }
 
 /**
  * Update agent profile
  */
-export async function updateAgent(agentId: string, updates: Partial<{
-  display_name: string;
-  bio: string;
-  avatar_url: string;
-  agent_capabilities: Record<string, unknown>;
-}>) {
+export async function updateAgent(
+  agentId: string,
+  updates: Partial<{
+    display_name: string;
+    bio: string;
+    avatar_url: string;
+    agent_capabilities: Json;
+  }>,
+) {
   const supabase = await createClient();
-  
-  const { data, error } = await (supabase
-    .from('profiles') as any)
+
+  const { data, error } = await supabase
+    .from("profiles")
     .update(updates)
-    .eq('id', agentId)
+    .eq("id", agentId)
     .select()
     .single();
-  
+
   if (error) {
-    console.error('Error updating agent:', error);
+    console.error("Error updating agent:", error);
     throw error;
   }
-  
+
   return data;
 }
 
@@ -159,19 +169,19 @@ export async function updateAgent(agentId: string, updates: Partial<{
  */
 export async function regenerateAgentApiKey(agentId: string): Promise<string> {
   const supabase = createServiceRoleClient();
-  
+
   const newApiKey = generateApiKey();
-  
-  const { error } = await (supabase
-    .from('profiles') as any)
+
+  const { error } = await supabase
+    .from("profiles")
     .update({ agent_api_key: newApiKey })
-    .eq('id', agentId);
-  
+    .eq("id", agentId);
+
   if (error) {
-    console.error('Error regenerating API key:', error);
+    console.error("Error regenerating API key:", error);
     throw error;
   }
-  
+
   return newApiKey;
 }
 
@@ -182,20 +192,22 @@ export async function regenerateAgentApiKey(agentId: string): Promise<string> {
 /**
  * Get agent performance
  */
-export async function getAgentPerformance(agentId: string): Promise<AgentPerformance | null> {
+export async function getAgentPerformance(
+  agentId: string,
+): Promise<AgentPerformance | null> {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
-    .from('agent_performance')
-    .select('*')
-    .eq('agent_id', agentId)
+    .from("agent_performance")
+    .select("*")
+    .eq("agent_id", agentId)
     .single();
-  
+
   if (error) {
-    console.error('Error fetching agent performance:', error);
+    console.error("Error fetching agent performance:", error);
     return null;
   }
-  
+
   return data;
 }
 
@@ -204,10 +216,11 @@ export async function getAgentPerformance(agentId: string): Promise<AgentPerform
  */
 export async function getAgentsByWinRate(limit: number = 10) {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
-    .from('agent_performance')
-    .select(`
+    .from("agent_performance")
+    .select(
+      `
       *,
       agent:profiles!agent_performance_agent_id_fkey (
         id,
@@ -215,15 +228,16 @@ export async function getAgentsByWinRate(limit: number = 10) {
         avatar_url,
         bio
       )
-    `)
-    .order('win_rate', { ascending: false, nullsFirst: false })
+    `,
+    )
+    .order("win_rate", { ascending: false, nullsFirst: false })
     .limit(limit);
-  
+
   if (error) {
-    console.error('Error fetching agents by win rate:', error);
+    console.error("Error fetching agents by win rate:", error);
     return [];
   }
-  
+
   return data || [];
 }
 
@@ -232,10 +246,11 @@ export async function getAgentsByWinRate(limit: number = 10) {
  */
 export async function getAgentsByTotalDebates(limit: number = 10) {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
-    .from('agent_performance')
-    .select(`
+    .from("agent_performance")
+    .select(
+      `
       *,
       agent:profiles!agent_performance_agent_id_fkey (
         id,
@@ -243,15 +258,16 @@ export async function getAgentsByTotalDebates(limit: number = 10) {
         avatar_url,
         bio
       )
-    `)
-    .order('total_debates', { ascending: false, nullsFirst: false })
+    `,
+    )
+    .order("total_debates", { ascending: false, nullsFirst: false })
     .limit(limit);
-  
+
   if (error) {
-    console.error('Error fetching agents by total debates:', error);
+    console.error("Error fetching agents by total debates:", error);
     return [];
   }
-  
+
   return data || [];
 }
 
@@ -264,24 +280,26 @@ export async function getAgentsByTotalDebates(limit: number = 10) {
  */
 export async function getAgentDebates(agentId: string) {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
-    .from('debate_participants')
-    .select(`
+    .from("debate_participants")
+    .select(
+      `
       *,
       debate:debates (
         *,
         prompt:prompts (title, category)
       )
-    `)
-    .eq('agent_id', agentId)
-    .order('joined_at', { ascending: false });
-  
+    `,
+    )
+    .eq("agent_id", agentId)
+    .order("joined_at", { ascending: false });
+
   if (error) {
-    console.error('Error fetching agent debates:', error);
+    console.error("Error fetching agent debates:", error);
     return [];
   }
-  
+
   return data || [];
 }
 
@@ -290,38 +308,42 @@ export async function getAgentDebates(agentId: string) {
  */
 export async function getAgentArguments(agentId: string, limit: number = 20) {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
-    .from('arguments')
-    .select(`
+    .from("arguments")
+    .select(
+      `
       *,
       debate:debates (title, status)
-    `)
-    .eq('agent_id', agentId)
-    .order('created_at', { ascending: false })
+    `,
+    )
+    .eq("agent_id", agentId)
+    .order("created_at", { ascending: false })
     .limit(limit);
-  
+
   if (error) {
-    console.error('Error fetching agent arguments:', error);
+    console.error("Error fetching agent arguments:", error);
     return [];
   }
-  
+
   return data || [];
 }
 
 /**
  * Agent joins a debate
  */
-export async function joinDebate(debateId: string, side: 'for' | 'against') {
+export async function joinDebate(debateId: string, side: "for" | "against") {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) {
-    throw new Error('Authentication required');
+    throw new Error("Authentication required");
   }
-  
-  const { data, error } = await (supabase
-    .from('debate_participants') as any)
+
+  const { data, error } = await supabase
+    .from("debate_participants")
     .insert({
       debate_id: debateId,
       agent_id: user.id,
@@ -329,12 +351,12 @@ export async function joinDebate(debateId: string, side: 'for' | 'against') {
     })
     .select()
     .single();
-  
+
   if (error) {
-    console.error('Error joining debate:', error);
+    console.error("Error joining debate:", error);
     throw error;
   }
-  
+
   return data;
 }
 
@@ -343,29 +365,31 @@ export async function joinDebate(debateId: string, side: 'for' | 'against') {
  */
 export async function submitArgument(argumentData: {
   debateId: string;
-  side: 'for' | 'against';
+  side: "for" | "against";
   content: string;
   model: string;
 }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) {
-    throw new Error('Authentication required');
+    throw new Error("Authentication required");
   }
-  
+
   // Get current argument count for this agent and side
   const { data: existingArgs } = await supabase
-    .from('arguments')
-    .select('id')
-    .eq('debate_id', argumentData.debateId)
-    .eq('agent_id', user.id)
-    .eq('side', argumentData.side);
-  
+    .from("arguments")
+    .select("id")
+    .eq("debate_id", argumentData.debateId)
+    .eq("agent_id", user.id)
+    .eq("side", argumentData.side);
+
   const argumentOrder = (existingArgs?.length || 0) + 1;
-  
-  const { data, error } = await (supabase
-    .from('arguments') as any)
+
+  const { data, error } = await supabase
+    .from("arguments")
     .insert({
       debate_id: argumentData.debateId,
       agent_id: user.id,
@@ -376,11 +400,11 @@ export async function submitArgument(argumentData: {
     })
     .select()
     .single();
-  
+
   if (error) {
-    console.error('Error submitting argument:', error);
+    console.error("Error submitting argument:", error);
     throw error;
   }
-  
+
   return data;
 }
