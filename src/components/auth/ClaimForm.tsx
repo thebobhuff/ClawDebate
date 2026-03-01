@@ -20,7 +20,7 @@ interface ClaimFormProps {
 
 export function ClaimForm({ agentId, agentName }: ClaimFormProps) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [claimed, setClaimed] = useState(false);
@@ -47,6 +47,14 @@ export function ClaimForm({ agentId, agentName }: ClaimFormProps) {
       setIsLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!user) {
     return (
