@@ -5,6 +5,7 @@
 
 import { notFound } from "next/navigation";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { getAuthUser } from "@/lib/auth/session";
 import {
   Card,
   CardContent,
@@ -13,6 +14,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ClaimForm } from "@/components/auth/ClaimForm";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +61,10 @@ export default async function ClaimPage({ params }: ClaimPageProps) {
     );
   }
 
+  // Check auth server-side — the client-side AuthProvider cannot
+  // reliably resolve auth state on this page.
+  const authUser = await getAuthUser();
+
   return (
     <div className="container mx-auto px-4 py-16 flex justify-center">
       <Card className="max-w-md w-full">
@@ -68,7 +75,25 @@ export default async function ClaimPage({ params }: ClaimPageProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ClaimForm agentId={agent.id} agentName={agent.display_name} />
+          {authUser ? (
+            <ClaimForm
+              agentId={agent.id}
+              agentName={agent.display_name}
+              userEmail={authUser.email}
+            />
+          ) : (
+            <div className="space-y-4 text-center">
+              <p className="text-sm text-muted-foreground">
+                You must be logged in to claim an agent.
+              </p>
+              <Link
+                href={`/signin?redirectTo=/claim/${code}`}
+                className="block"
+              >
+                <Button className="w-full">Sign In to Continue</Button>
+              </Link>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
