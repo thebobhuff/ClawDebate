@@ -1,9 +1,9 @@
 "use server";
 
 /**
-* Authentication Server Actions
-* Server-side actions for authentication operations
-*/
+ * Authentication Server Actions
+ * Server-side actions for authentication operations
+ */
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -12,16 +12,16 @@ import { getAuthUser } from "@/lib/auth/session";
 import { ensureHumanProfile } from "@/lib/auth/profile";
 import { generateApiKey } from "@/lib/supabase/auth";
 import {
-agentRegistrationSchema,
-signInSchema,
-signUpSchema,
-apiKeySchema,
-type AgentRegistrationFormData,
-type SignInFormData,
-type SignUpFormData,
-type AgentRegistrationResponse,
-type AuthResponse,
-type ApiValidationResponse,
+  agentRegistrationSchema,
+  signInSchema,
+  signUpSchema,
+  apiKeySchema,
+  type AgentRegistrationFormData,
+  type SignInFormData,
+  type SignUpFormData,
+  type AgentRegistrationResponse,
+  type AuthResponse,
+  type ApiValidationResponse,
 } from "@/types/auth";
 
 // ============================================================================
@@ -29,117 +29,117 @@ type ApiValidationResponse,
 // ============================================================================
 
 /**
-* Register a new agent
-*/
+ * Register a new agent
+ */
 export async function registerAgent(
-formData: AgentRegistrationFormData,
+  formData: AgentRegistrationFormData,
 ): Promise<AgentRegistrationResponse> {
-try {
-// Validate input
-const validatedData = agentRegistrationSchema.parse(formData);
+  try {
+    // Validate input
+    const validatedData = agentRegistrationSchema.parse(formData);
 
-const serviceRoleSupabase = createServiceRoleClient();
+    const serviceRoleSupabase = createServiceRoleClient();
 
-// Check if agent name already exists
-const { data: existingUser } = await serviceRoleSupabase
-.from("profiles")
-.select("id")
-.eq("display_name", validatedData.name)
-.eq("user_type", "agent")
-.single();
+    // Check if agent name already exists
+    const { data: existingUser } = await serviceRoleSupabase
+      .from("profiles")
+      .select("id")
+      .eq("display_name", validatedData.name)
+      .eq("user_type", "agent")
+      .single();
 
-if (existingUser) {
-return {
-success: false,
-error: "Agent name already exists",
-};
-}
+    if (existingUser) {
+      return {
+        success: false,
+        error: "Agent name already exists",
+      };
+    }
 
-// Create a backing auth user because profiles.id references auth.users(id).
-const agentEmailSlug =
-validatedData.name
-.toLowerCase()
-.replace(/[^a-z0-9]+/g, "-")
-.replace(/^-+|-+$/g, "")
-.slice(0, 40) || "agent";
-const agentEmail = `${agentEmailSlug}-${crypto.randomUUID()}@agents.clawdebate.local`;
-const agentPassword = crypto.randomUUID() + crypto.randomUUID();
+    // Create a backing auth user because profiles.id references auth.users(id).
+    const agentEmailSlug =
+      validatedData.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 40) || "agent";
+    const agentEmail = `${agentEmailSlug}-${crypto.randomUUID()}@agents.clawdebate.local`;
+    const agentPassword = crypto.randomUUID() + crypto.randomUUID();
 
-const { data: authUserData, error: authError } =
-await serviceRoleSupabase.auth.admin.createUser({
-email: agentEmail,
-password: agentPassword,
-email_confirm: true,
-user_metadata: {
-display_name: validatedData.name,
-},
-});
+    const { data: authUserData, error: authError } =
+      await serviceRoleSupabase.auth.admin.createUser({
+        email: agentEmail,
+        password: agentPassword,
+        email_confirm: true,
+        user_metadata: {
+          display_name: validatedData.name,
+        },
+      });
 
-if (authError || !authUserData.user) {
-console.error("Error creating agent auth user:", authError);
-return {
-success: false,
-error: "Failed to create agent profile",
-};
-}
+    if (authError || !authUserData.user) {
+      console.error("Error creating agent auth user:", authError);
+      return {
+        success: false,
+        error: "Failed to create agent profile",
+      };
+    }
 
-// Generate API key and verification code
-const apiKey = generateApiKey();
-const verificationCode = Math.random()
-.toString(36)
-.substring(2, 10)
-.toUpperCase();
+    // Generate API key and verification code
+    const apiKey = generateApiKey();
+    const verificationCode = Math.random()
+      .toString(36)
+      .substring(2, 10)
+      .toUpperCase();
 
-// Update the auto-created profile row for this auth user into an agent profile.
-const { data: profile, error: profileError } = await serviceRoleSupabase
-.from("profiles")
-.update({
-user_type: "agent",
-display_name: validatedData.name,
-bio: validatedData.description,
-agent_api_key: apiKey,
-is_claimed: false,
-verification_status: "pending",
-})
-.eq("id", authUserData.user.id)
-.select()
-.single();
+    // Update the auto-created profile row for this auth user into an agent profile.
+    const { data: profile, error: profileError } = await serviceRoleSupabase
+      .from("profiles")
+      .update({
+        user_type: "agent",
+        display_name: validatedData.name,
+        bio: validatedData.description,
+        agent_api_key: apiKey,
+        is_claimed: false,
+        verification_status: "pending",
+      })
+      .eq("id", authUserData.user.id)
+      .select()
+      .single();
 
-if (profileError || !profile) {
-console.error("Error creating agent profile:", profileError);
-await serviceRoleSupabase.auth.admin.deleteUser(authUserData.user.id);
-return {
-success: false,
-error: "Failed to create agent profile",
-};
-}
+    if (profileError || !profile) {
+      console.error("Error creating agent profile:", profileError);
+      await serviceRoleSupabase.auth.admin.deleteUser(authUserData.user.id);
+      return {
+        success: false,
+        error: "Failed to create agent profile",
+      };
+    }
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-const claimUrl = `${appUrl}/claim/${profile.claim_code}`;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const claimUrl = `${appUrl}/claim/${profile.claim_code}`;
 
-revalidatePath("/");
+    revalidatePath("/");
 
-return {
-success: true,
-agent: {
-api_key: apiKey,
-claim_url: claimUrl,
-verification_code: verificationCode,
-},
-};
-} catch (error) {
-console.error("Error registering agent:", error);
-if (error instanceof Error && error.name === "ZodError") {
-return {
-success: false,
-error: "Invalid input data",
-};
-}
-return {
-success: false,
-error: "An unexpected error occurred",
-};
-}
+    return {
+      success: true,
+      agent: {
+        api_key: apiKey,
+        claim_url: claimUrl,
+        verification_code: verificationCode,
+      },
+    };
+  } catch (error) {
+    console.error("Error registering agent:", error);
+    if (error instanceof Error && error.name === "ZodError") {
+      return {
+        success: false,
+        error: "Invalid input data",
+      };
+    }
+    return {
+      success: false,
+      error: "An unexpected error occurred",
+    };
+  }
 }
 
 // ============================================================================
@@ -147,79 +147,79 @@ error: "An unexpected error occurred",
 // ============================================================================
 
 /**
-* Sign in a user
-*/
+ * Sign in a user
+ */
 export async function signIn(formData: SignInFormData): Promise<AuthResponse> {
-try {
-// Validate input
-const validatedData = signInSchema.parse(formData);
+  try {
+    // Validate input
+    const validatedData = signInSchema.parse(formData);
 
-const supabase = await createClient();
+    const supabase = await createClient();
 
-// Attempt to sign in
-const { data, error } = await supabase.auth.signInWithPassword({
-email: validatedData.email,
-password: validatedData.password,
-});
+    // Attempt to sign in
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: validatedData.email,
+      password: validatedData.password,
+    });
 
-if (error) {
-return {
-success: false,
-error: "Invalid email or password",
-};
-}
+    if (error) {
+      return {
+        success: false,
+        error: "Invalid email or password",
+      };
+    }
 
-if (!data.user) {
-return {
-success: false,
-error: "Sign in failed",
-};
-}
+    if (!data.user) {
+      return {
+        success: false,
+        error: "Sign in failed",
+      };
+    }
 
-let { data: profile } = await supabase
-.from("profiles")
-.select("user_type")
-.eq("id", data.user.id)
-.single();
+    let { data: profile } = await supabase
+      .from("profiles")
+      .select("user_type")
+      .eq("id", data.user.id)
+      .single();
 
-if (!profile) {
-profile = await ensureHumanProfile({
-id: data.user.id,
-email: data.user.email,
-userMetadata: (data.user.user_metadata ?? {}) as Record<
-string,
-unknown
->,
-});
-}
+    if (!profile) {
+      profile = await ensureHumanProfile({
+        id: data.user.id,
+        email: data.user.email,
+        userMetadata: (data.user.user_metadata ?? {}) as Record<
+          string,
+          unknown
+        >,
+      });
+    }
 
-const userType = profile?.user_type;
-const redirectTo =
-userType === "admin"
-? "/admin"
-: userType === "agent"
-? "/agent/debates"
-: "/profile";
+    const userType = profile?.user_type;
+    const redirectTo =
+      userType === "admin"
+        ? "/admin"
+        : userType === "agent"
+          ? "/agent/debates"
+          : "/profile";
 
-revalidatePath("/");
+    revalidatePath("/");
 
-return {
-success: true,
-redirectTo,
-};
-} catch (error) {
-console.error("Error signing in:", error);
-if (error instanceof Error && error.name === "ZodError") {
-return {
-success: false,
-error: "Invalid input data",
-};
-}
-return {
-success: false,
-error: "An unexpected error occurred",
-};
-}
+    return {
+      success: true,
+      redirectTo,
+    };
+  } catch (error) {
+    console.error("Error signing in:", error);
+    if (error instanceof Error && error.name === "ZodError") {
+      return {
+        success: false,
+        error: "Invalid input data",
+      };
+    }
+    return {
+      success: false,
+      error: "An unexpected error occurred",
+    };
+  }
 }
 
 // ============================================================================
@@ -227,96 +227,96 @@ error: "An unexpected error occurred",
 // ============================================================================
 
 /**
-* Sign up a new human user
-*/
+ * Sign up a new human user
+ */
 export async function signUp(formData: SignUpFormData): Promise<AuthResponse> {
-try {
-// Validate input
-const validatedData = signUpSchema.parse(formData);
+  try {
+    // Validate input
+    const validatedData = signUpSchema.parse(formData);
 
-const supabase = await createClient();
+    const supabase = await createClient();
 
-// Create user account with Supabase Auth
-const { data, error } = await supabase.auth.signUp({
-email: validatedData.email,
-password: validatedData.password,
-options: {
-data: {
-display_name:
-validatedData.displayName || validatedData.email.split("@")[0],
-},
-},
-});
+    // Create user account with Supabase Auth
+    const { data, error } = await supabase.auth.signUp({
+      email: validatedData.email,
+      password: validatedData.password,
+      options: {
+        data: {
+          display_name:
+            validatedData.displayName || validatedData.email.split("@")[0],
+        },
+      },
+    });
 
-if (error) {
-if (
-error.message.toLowerCase().includes("rate limit") ||
-error.message.toLowerCase().includes("email rate limit") ||
-error.message.toLowerCase().includes("security purposes")
-) {
-return {
-success: false,
-error:
-"Too many email attempts. Please wait a few minutes and try again.",
-};
-}
+    if (error) {
+      if (
+        error.message.toLowerCase().includes("rate limit") ||
+        error.message.toLowerCase().includes("email rate limit") ||
+        error.message.toLowerCase().includes("security purposes")
+      ) {
+        return {
+          success: false,
+          error:
+            "Too many email attempts. Please wait a few minutes and try again.",
+        };
+      }
 
-if (error.message.includes("already registered")) {
-return {
-success: false,
-error: "Email already registered",
-};
-}
-return {
-success: false,
-error: error.message || "Failed to create account",
-};
-}
+      if (error.message.includes("already registered")) {
+        return {
+          success: false,
+          error: "Email already registered",
+        };
+      }
+      return {
+        success: false,
+        error: error.message || "Failed to create account",
+      };
+    }
 
-if (!data.user) {
-return {
-success: false,
-error: "Sign up failed",
-};
-}
+    if (!data.user) {
+      return {
+        success: false,
+        error: "Sign up failed",
+      };
+    }
 
-// Keep profile creation idempotent.
-// A DB trigger (`on_auth_user_created`) may already create this row.
-const profile = await ensureHumanProfile({
-id: data.user.id,
-email: validatedData.email,
-userMetadata: {
-display_name:
-validatedData.displayName || validatedData.email.split("@")[0],
-},
-});
+    // Keep profile creation idempotent.
+    // A DB trigger (`on_auth_user_created`) may already create this row.
+    const profile = await ensureHumanProfile({
+      id: data.user.id,
+      email: validatedData.email,
+      userMetadata: {
+        display_name:
+          validatedData.displayName || validatedData.email.split("@")[0],
+      },
+    });
 
-if (!profile) {
-return {
-success: false,
-error: "Failed to create profile",
-};
-}
+    if (!profile) {
+      return {
+        success: false,
+        error: "Failed to create profile",
+      };
+    }
 
-revalidatePath("/");
+    revalidatePath("/");
 
-return {
-success: true,
-redirectTo: "/signin",
-};
-} catch (error) {
-console.error("Error signing up:", error);
-if (error instanceof Error && error.name === "ZodError") {
-return {
-success: false,
-error: "Invalid input data",
-};
-}
-return {
-success: false,
-error: "An unexpected error occurred",
-};
-}
+    return {
+      success: true,
+      redirectTo: "/signin",
+    };
+  } catch (error) {
+    console.error("Error signing up:", error);
+    if (error instanceof Error && error.name === "ZodError") {
+      return {
+        success: false,
+        error: "Invalid input data",
+      };
+    }
+    return {
+      success: false,
+      error: "An unexpected error occurred",
+    };
+  }
 }
 
 // ============================================================================
@@ -324,35 +324,35 @@ error: "An unexpected error occurred",
 // ============================================================================
 
 /**
-* Sign out current user
-*/
+ * Sign out current user
+ */
 export async function signOut(): Promise<{ success: boolean; error?: string }> {
-try {
-const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-const { error } = await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
 
-if (error) {
-return {
-success: false,
-error: error.message || "Failed to sign out",
-};
-}
+    if (error) {
+      return {
+        success: false,
+        error: error.message || "Failed to sign out",
+      };
+    }
 
-revalidatePath("/");
-revalidatePath("/agent/debates");
-revalidatePath("/admin");
+    revalidatePath("/");
+    revalidatePath("/agent/debates");
+    revalidatePath("/admin");
 
-return {
-success: true,
-};
-} catch (error) {
-console.error("Error signing out:", error);
-return {
-success: false,
-error: "An unexpected error occurred",
-};
-}
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Error signing out:", error);
+    return {
+      success: false,
+      error: "An unexpected error occurred",
+    };
+  }
 }
 
 // ============================================================================
@@ -360,57 +360,57 @@ error: "An unexpected error occurred",
 // ============================================================================
 
 /**
-* Validate agent API key (for external API calls)
-*/
+ * Validate agent API key (for external API calls)
+ */
 export async function validateAPIKey(
-apiKey: string,
+  apiKey: string,
 ): Promise<ApiValidationResponse> {
-try {
-// Validate input
-const validatedData = apiKeySchema.parse({ apiKey });
+  try {
+    // Validate input
+    const validatedData = apiKeySchema.parse({ apiKey });
 
-const supabase = createServiceRoleClient();
+    const supabase = createServiceRoleClient();
 
-const { data: agent, error } = await supabase
-.from("profiles")
-.select("*")
-.eq("agent_api_key", validatedData.apiKey)
-.eq("user_type", "agent")
-.single();
+    const { data: agent, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("agent_api_key", validatedData.apiKey)
+      .eq("user_type", "agent")
+      .single();
 
-if (error || !agent || agent.verification_status === "flagged") {
-return {
-valid: false,
-error: "Invalid API key",
-};
-}
+    if (error || !agent || agent.verification_status === "flagged") {
+      return {
+        valid: false,
+        error: "Invalid API key",
+      };
+    }
 
-const agentData = agent;
+    const agentData = agent;
 
-return {
-valid: true,
-agent: {
-agentId: agentData.id,
-agentName: agentData.display_name,
-capabilities: agentData.agent_capabilities as Record<
-string,
-any
-> | null,
-},
-};
-} catch (error) {
-console.error("Error validating API key:", error);
-if (error instanceof Error && error.name === "ZodError") {
-return {
-valid: false,
-error: "Invalid API key format",
-};
-}
-return {
-valid: false,
-error: "An unexpected error occurred",
-};
-}
+    return {
+      valid: true,
+      agent: {
+        agentId: agentData.id,
+        agentName: agentData.display_name,
+        capabilities: agentData.agent_capabilities as Record<
+          string,
+          any
+        > | null,
+      },
+    };
+  } catch (error) {
+    console.error("Error validating API key:", error);
+    if (error instanceof Error && error.name === "ZodError") {
+      return {
+        valid: false,
+        error: "Invalid API key format",
+      };
+    }
+    return {
+      valid: false,
+      error: "An unexpected error occurred",
+    };
+  }
 }
 
 // ============================================================================
@@ -418,67 +418,67 @@ error: "An unexpected error occurred",
 // ============================================================================
 
 /**
-* Request password reset email
-*/
+ * Request password reset email
+ */
 export async function requestPasswordReset(
-email: string,
+  email: string,
 ): Promise<{ success: boolean; error?: string }> {
-try {
-const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-const { error } = await supabase.auth.resetPasswordForEmail(email, {
-redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/reset-password`,
-});
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/reset-password`,
+    });
 
-if (error) {
-return {
-success: false,
-error: error.message || "Failed to send reset email",
-};
-}
+    if (error) {
+      return {
+        success: false,
+        error: error.message || "Failed to send reset email",
+      };
+    }
 
-return {
-success: true,
-};
-} catch (error) {
-console.error("Error requesting password reset:", error);
-return {
-success: false,
-error: "An unexpected error occurred",
-};
-}
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Error requesting password reset:", error);
+    return {
+      success: false,
+      error: "An unexpected error occurred",
+    };
+  }
 }
 
 /**
-* Update password
-*/
+ * Update password
+ */
 export async function updatePassword(
-newPassword: string,
+  newPassword: string,
 ): Promise<{ success: boolean; error?: string }> {
-try {
-const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-const { error } = await supabase.auth.updateUser({
-password: newPassword,
-});
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
 
-if (error) {
-return {
-success: false,
-error: error.message || "Failed to update password",
-};
-}
+    if (error) {
+      return {
+        success: false,
+        error: error.message || "Failed to update password",
+      };
+    }
 
-return {
-success: true,
-};
-} catch (error) {
-console.error("Error updating password:", error);
-return {
-success: false,
-error: "An unexpected error occurred",
-};
-}
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Error updating password:", error);
+    return {
+      success: false,
+      error: "An unexpected error occurred",
+    };
+  }
 }
 
 // ============================================================================
@@ -486,125 +486,135 @@ error: "An unexpected error occurred",
 // ============================================================================
 
 /**
-* Claim an agent
-*/
+ * Claim an agent
+ */
 export async function claimAgent(
-agentId: string,
+  agentId: string,
 ): Promise<{ success: boolean; error?: string }> {
-try {
-const authUser = await getAuthUser();
-if (!authUser) {
-return {
-success: false,
-error: "You must be signed in to claim an agent",
-};
-}
+  try {
+    const authUser = await getAuthUser();
+    if (!authUser) {
+      console.error(
+        "[claimAgent] getAuthUser returned null — cookies may not have propagated",
+      );
+      return {
+        success: false,
+        error: "Session not found. Please refresh the page and try again.",
+      };
+    }
 
-if (authUser.userType !== "human" && authUser.userType !== "admin") {
-return {
-success: false,
-error: "Only human or admin accounts can claim agents",
-};
-}
+    if (authUser.userType !== "human" && authUser.userType !== "admin") {
+      console.error(
+        `[claimAgent] Rejected userType=${authUser.userType} for user=${authUser.id}`,
+      );
+      return {
+        success: false,
+        error: "Only human or admin accounts can claim agents",
+      };
+    }
 
-const serviceRoleSupabase = createServiceRoleClient();
+    const serviceRoleSupabase = createServiceRoleClient();
 
-// Atomic claim: only succeeds if the row is currently unclaimed.
-const { data: claimedAgent, error: updateError } = await serviceRoleSupabase
-.from("profiles")
-.update({
-is_claimed: true,
-owner_id: authUser.id,
-verification_status: "verified",
-})
-.eq("id", agentId)
-.or("is_claimed.is.null,is_claimed.eq.false")
-.eq("user_type", "agent")
-.select("id")
-.single();
+    // Atomic claim: only succeeds if the row is currently unclaimed.
+    const { data: claimedAgent, error: updateError } = await serviceRoleSupabase
+      .from("profiles")
+      .update({
+        is_claimed: true,
+        owner_id: authUser.id,
+        verification_status: "verified",
+      })
+      .eq("id", agentId)
+      .or("is_claimed.is.null,is_claimed.eq.false")
+      .eq("user_type", "agent")
+      .select("id")
+      .single();
 
-if (updateError || !claimedAgent) {
-console.error("Error claiming agent:", updateError);
-return { success: false, error: "Agent not found or already claimed" };
-}
+    if (updateError || !claimedAgent) {
+      console.error(
+        `[claimAgent] DB update failed for agent=${agentId} by user=${authUser.id}:`,
+        updateError?.message,
+      );
+      return { success: false, error: "Agent not found or already claimed" };
+    }
 
-revalidatePath(`/claim`);
-revalidatePath("/agent/debates");
+    revalidatePath(`/claim`);
+    revalidatePath("/agent/debates");
+    revalidatePath("/profile/agents");
 
-return { success: true };
-} catch (error) {
-console.error("Error in claimAgent action:", error);
-return { success: false, error: "An unexpected error occurred" };
-}
+    return { success: true };
+  } catch (error) {
+    console.error("Error in claimAgent action:", error);
+    return { success: false, error: "An unexpected error occurred" };
+  }
 }
 
 export async function updateClaimedAgentProfile(
-formData: FormData,
+  formData: FormData,
 ): Promise<void> {
-try {
-const authUser = await getAuthUser();
-if (!authUser) {
-return;
-}
+  try {
+    const authUser = await getAuthUser();
+    if (!authUser) {
+      return;
+    }
 
-const agentId = formData.get("agentId");
-const displayName = formData.get("displayName");
-const bio = formData.get("bio");
+    const agentId = formData.get("agentId");
+    const displayName = formData.get("displayName");
+    const bio = formData.get("bio");
 
-if (
-typeof agentId !== "string" ||
-typeof displayName !== "string" ||
-typeof bio !== "string"
-) {
-return;
-}
+    if (
+      typeof agentId !== "string" ||
+      typeof displayName !== "string" ||
+      typeof bio !== "string"
+    ) {
+      return;
+    }
 
-const normalizedName = displayName.trim();
-const normalizedBio = bio.trim();
+    const normalizedName = displayName.trim();
+    const normalizedBio = bio.trim();
 
-if (normalizedName.length < 2 || normalizedName.length > 100) {
-return;
-}
+    if (normalizedName.length < 2 || normalizedName.length > 100) {
+      return;
+    }
 
-if (normalizedBio.length > 500) {
-return;
-}
+    if (normalizedBio.length > 500) {
+      return;
+    }
 
-const supabase = createServiceRoleClient();
-const { data: existingAgent } = await supabase
-.from("profiles")
-.select("id, owner_id, user_type")
-.eq("id", agentId)
-.single();
+    const supabase = createServiceRoleClient();
+    const { data: existingAgent } = await supabase
+      .from("profiles")
+      .select("id, owner_id, user_type")
+      .eq("id", agentId)
+      .single();
 
-const canManage =
-existingAgent &&
-existingAgent.user_type === "agent" &&
-(authUser.userType === "admin" || existingAgent.owner_id === authUser.id);
+    const canManage =
+      existingAgent &&
+      existingAgent.user_type === "agent" &&
+      (authUser.userType === "admin" || existingAgent.owner_id === authUser.id);
 
-if (!canManage) {
-return;
-}
+    if (!canManage) {
+      return;
+    }
 
-const { error } = await supabase
-.from("profiles")
-.update({
-display_name: normalizedName,
-bio: normalizedBio || null,
-})
-.eq("id", agentId)
-.eq("user_type", "agent");
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        display_name: normalizedName,
+        bio: normalizedBio || null,
+      })
+      .eq("id", agentId)
+      .eq("user_type", "agent");
 
-if (error) {
-console.error("Error updating claimed agent profile:", error);
-return;
-}
+    if (error) {
+      console.error("Error updating claimed agent profile:", error);
+      return;
+    }
 
-revalidatePath("/profile");
-revalidatePath("/profile/agents");
-revalidatePath(`/stats/agents/${agentId}`);
-revalidatePath("/admin/agents");
-} catch (error) {
-console.error("Error updating claimed agent profile:", error);
-}
+    revalidatePath("/profile");
+    revalidatePath("/profile/agents");
+    revalidatePath(`/stats/agents/${agentId}`);
+    revalidatePath("/admin/agents");
+  } catch (error) {
+    console.error("Error updating claimed agent profile:", error);
+  }
 }

@@ -23,8 +23,15 @@ export async function GET(request: Request) {
 
   const cookieStore = await cookies();
 
-  // Build the supabase client so that setAll writes cookies directly onto
-  // the cookieStore — ensuring the redirect response carries them.
+  // Accumulate cookies so we can explicitly set them on the redirect
+  // response — cookieStore.set() alone may not propagate to
+  // NextResponse.redirect() in all Next.js versions.
+  const pendingCookies: Array<{
+    name: string;
+    value: string;
+    options?: Record<string, unknown>;
+  }> = [];
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -42,6 +49,7 @@ export async function GET(request: Request) {
         ) {
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, options);
+            pendingCookies.push({ name, value, options });
           });
         },
       },
@@ -78,5 +86,11 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(new URL(next, requestUrl.origin));
+  // Explicitly set auth cookies on the redirect response so they
+  // are guaranteed to reach the browser.
+  const response = NextResponse.redirect(new URL(next, requestUrl.origin));
+  for (const { name, value, options } of pendingCookies) {
+    response.cookies.set(name, value, options as any);
+  }
+  return response;
 }

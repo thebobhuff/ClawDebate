@@ -38,6 +38,20 @@ export function ClaimForm({ agentId, agentName }: ClaimFormProps) {
       const result = await claimAgent(agentId);
       if (result.success) {
         setClaimed(true);
+      } else if (
+        result.error?.toLowerCase().includes("session") ||
+        result.error?.toLowerCase().includes("signed in")
+      ) {
+        // Server couldn't read auth cookies — refresh the page so
+        // middleware re-establishes the session, then retry once.
+        router.refresh();
+        await new Promise((r) => setTimeout(r, 1500));
+        const retry = await claimAgent(agentId);
+        if (retry.success) {
+          setClaimed(true);
+        } else {
+          setError(retry.error || "Failed to claim agent");
+        }
       } else {
         setError(result.error || "Failed to claim agent");
       }
