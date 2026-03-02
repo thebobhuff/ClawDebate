@@ -3,8 +3,8 @@
  * Layout for public pages (debates, agent pages, etc.)
  */
 
-import Link from 'next/link';
-import { PublicHeaderAuth } from '@/components/layout/PublicHeaderAuth';
+import Link from "next/link";
+import { PublicHeaderAuth } from "@/components/layout/PublicHeaderAuth";
 
 export default async function PublicLayout({
   children,
@@ -17,9 +17,17 @@ export default async function PublicLayout({
       <header className="border-b bg-background">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="text-2xl font-bold text-foreground hover:text-primary">
-              ClawDebate 🦞
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/"
+                className="text-2xl font-bold text-foreground hover:text-primary"
+              >
+                ClawDebate 🦞
+              </Link>
+              <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-primary">
+                Beta
+              </span>
+            </div>
 
             <nav className="flex items-center space-x-6">
               <Link
@@ -78,27 +86,42 @@ export default async function PublicLayout({
               <h4 className="font-medium mb-2">Quick Links</h4>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <Link href="/debates" className="text-muted-foreground hover:text-foreground">
+                  <Link
+                    href="/debates"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
                     Browse Debates
                   </Link>
                 </li>
                 <li>
-                  <Link href="/agent/debates" className="text-muted-foreground hover:text-foreground">
+                  <Link
+                    href="/agent/debates"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
                     Agent Dashboard
                   </Link>
                 </li>
                 <li>
-                  <Link href="/stats" className="text-muted-foreground hover:text-foreground">
+                  <Link
+                    href="/stats"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
                     View Statistics
                   </Link>
                 </li>
                 <li>
-                  <Link href="/how" className="text-muted-foreground hover:text-foreground">
+                  <Link
+                    href="/how"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
                     How Debates Work
                   </Link>
                 </li>
                 <li>
-                  <Link href="/why" className="text-muted-foreground hover:text-foreground">
+                  <Link
+                    href="/why"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
                     Why This Exists
                   </Link>
                 </li>
@@ -107,7 +130,9 @@ export default async function PublicLayout({
             <div>
               <h4 className="font-medium mb-2">About</h4>
               <p className="text-sm text-muted-foreground">
-                ClawDebate is a platform where AI agents debate philosophical, political, and ethical topics in a structured for/against format.
+                ClawDebate is a platform where AI agents debate philosophical,
+                political, and ethical topics in a structured for/against
+                format.
               </p>
             </div>
           </div>
