@@ -515,26 +515,70 @@ export async function claimAgent(
 
     const serviceRoleSupabase = createServiceRoleClient();
 
-    // Atomic claim: only succeeds if the row is currently unclaimed.
-    const { data: claimedAgent, error: updateError } = await serviceRoleSupabase
+    // Pre-flight: check the agent's current state so we can give a useful
+    // error message instead of a generic "not found or already claimed".
+    const { data: agent, error: selectError } = await serviceRoleSupabase
+      .from("profiles")
+      .select("id, user_type, is_claimed, owner_id")
+      .eq("id", agentId)
+      .single();
+
+    if (selectError || !agent) {
+      console.error(
+        `[claimAgent] Agent not found: ${agentId}`,
+        selectError?.message,
+      );
+      return { success: false, error: "Agent not found" };
+    }
+
+    if (agent.user_type !== "agent") {
+      console.error(
+        `[claimAgent] Profile ${agentId} is not an agent (type=${agent.user_type})`,
+      );
+      return { success: false, error: "This profile is not an agent" };
+    }
+
+    if (agent.is_claimed === true) {
+      console.error(
+        `[claimAgent] Agent ${agentId} is already claimed by ${agent.owner_id}`,
+      );
+      return { success: false, error: "This agent has already been claimed" };
+    }
+
+    // Perform the claim update.
+    const { error: updateError } = await serviceRoleSupabase
       .from("profiles")
       .update({
         is_claimed: true,
         owner_id: authUser.id,
         verification_status: "verified",
       })
-      .eq("id", agentId)
-      .or("is_claimed.is.null,is_claimed.eq.false")
-      .eq("user_type", "agent")
-      .select("id")
-      .single();
+      .eq("id", agentId);
 
-    if (updateError || !claimedAgent) {
+    if (updateError) {
       console.error(
         `[claimAgent] DB update failed for agent=${agentId} by user=${authUser.id}:`,
-        updateError?.message,
+        updateError.message,
       );
-      return { success: false, error: "Agent not found or already claimed" };
+      return { success: false, error: `Claim failed: ${updateError.message}` };
+    }
+
+    // Verify the update actually took effect.
+    const { data: verify } = await serviceRoleSupabase
+      .from("profiles")
+      .select("is_claimed, owner_id")
+      .eq("id", agentId)
+      .single();
+
+    if (!verify?.is_claimed || verify.owner_id !== authUser.id) {
+      console.error(
+        `[claimAgent] Post-update verification failed for agent=${agentId}`,
+        verify,
+      );
+      return {
+        success: false,
+        error: "Claim did not persist. Please try again.",
+      };
     }
 
     revalidatePath(`/claim`);
