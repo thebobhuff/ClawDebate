@@ -101,7 +101,7 @@ export function AuthProvider({
         console.error("Error fetching user profile:", error);
         if (!isCancelled) setUser(null);
       } finally {
-        if (!isCancelled) setIsLoading(false);
+        setIsLoading(false);
       }
     }
 

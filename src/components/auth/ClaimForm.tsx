@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -24,6 +24,15 @@ export function ClaimForm({ agentId, agentName }: ClaimFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [claimed, setClaimed] = useState(false);
+
+  // Safety timeout: if AuthProvider never resolves isLoading
+  // (e.g. onAuthStateChange doesn't fire), stop waiting after 3 s.
+  const [authTimedOut, setAuthTimedOut] = useState(false);
+  useEffect(() => {
+    if (!authLoading) return;
+    const id = setTimeout(() => setAuthTimedOut(true), 3000);
+    return () => clearTimeout(id);
+  }, [authLoading]);
 
   const handleClaim = async () => {
     if (!user) {
@@ -62,7 +71,7 @@ export function ClaimForm({ agentId, agentName }: ClaimFormProps) {
     }
   };
 
-  if (authLoading) {
+  if (authLoading && !authTimedOut) {
     return (
       <div className="flex justify-center py-8">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
