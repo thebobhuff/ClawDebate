@@ -3,10 +3,10 @@
  * Server-side actions for fetching and calculating statistics
  */
 
-'use server';
+"use server";
 
-import { revalidatePath } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
 import {
   GetPlatformStatsInput,
   GetDebateStatsInput,
@@ -14,16 +14,17 @@ import {
   GetCategoryStatsInput,
   GetLeaderboardInput,
   GetRecentActivityInput,
-} from '@/lib/validations/stats';
+} from "@/lib/validations/stats";
 import {
   calculatePlatformStats,
   calculateDebateStats,
   calculateAgentPerformance,
   calculateAgentPerformanceOverTime,
   calculateCategoryStats,
-} from '@/lib/stats';
+} from "@/lib/stats";
 import {
   PlatformStatsResponse,
+  ExpandedPlatformStatsResponse,
   DebateStatsResponse,
   AgentStatsResponse,
   CategoryStatsResponse,
@@ -34,25 +35,32 @@ import {
   StatsValidationError,
   AgentDebateSummary,
   CategoryStats,
-} from '@/types/stats';
+} from "@/types/stats";
 
 // ============================================================================
 // Platform Statistics
 // ============================================================================
 
-export async function getPlatformStats(input: Partial<GetPlatformStatsInput> = {}) {
+export async function getPlatformStats(
+  input: Partial<GetPlatformStatsInput> = {},
+) {
   try {
     const supabase = await createClient();
 
     // Fetch all necessary data
-    const [debatesResult, agentsResult, promptsResult, votesResult, argumentsResult] =
-      await Promise.all([
-        supabase.from('debates').select('*'),
-        supabase.from('profiles').select('*').eq('user_type', 'agent'),
-        supabase.from('prompts').select('*'),
-        supabase.from('votes').select('*'),
-        supabase.from('arguments').select('*'),
-      ]);
+    const [
+      debatesResult,
+      agentsResult,
+      promptsResult,
+      votesResult,
+      argumentsResult,
+    ] = await Promise.all([
+      supabase.from("debates").select("*"),
+      supabase.from("profiles").select("*").eq("user_type", "agent"),
+      supabase.from("prompts").select("*"),
+      supabase.from("votes").select("*"),
+      supabase.from("arguments").select("*"),
+    ]);
 
     if (debatesResult.error) throw debatesResult.error;
     if (agentsResult.error) throw agentsResult.error;
@@ -76,10 +84,166 @@ export async function getPlatformStats(input: Partial<GetPlatformStatsInput> = {
 
     return { success: true, data: response };
   } catch (error) {
-    console.error('Error fetching platform stats:', error);
+    console.error("Error fetching platform stats:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch platform statistics',
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch platform statistics",
+    };
+  }
+}
+
+// ============================================================================
+// Expanded Platform Statistics (for main stats page)
+// ============================================================================
+
+export async function getExpandedPlatformStats() {
+  try {
+    const supabase = await createClient();
+
+    const [
+      debatesResult,
+      agentsResult,
+      promptsResult,
+      votesResult,
+      argumentsResult,
+      participantsResult,
+    ] = await Promise.all([
+      supabase.from("debates").select("*"),
+      supabase.from("profiles").select("*").eq("user_type", "agent"),
+      supabase.from("prompts").select("*"),
+      supabase.from("votes").select("*"),
+      supabase.from("arguments").select("*"),
+      supabase.from("debate_participants").select("*"),
+    ]);
+
+    if (debatesResult.error) throw debatesResult.error;
+    if (agentsResult.error) throw agentsResult.error;
+    if (promptsResult.error) throw promptsResult.error;
+    if (votesResult.error) throw votesResult.error;
+    if (argumentsResult.error) throw argumentsResult.error;
+    if (participantsResult.error) throw participantsResult.error;
+
+    const debates = debatesResult.data || [];
+    const agents = agentsResult.data || [];
+    const arguments_ = argumentsResult.data || [];
+    const participants = participantsResult.data || [];
+
+    // Core platform stats
+    const stats = calculatePlatformStats({
+      debates,
+      agents,
+      prompts: promptsResult.data || [],
+      votes: votesResult.data || [],
+      arguments: arguments_,
+    });
+
+    // Debates by status
+    const statusCounts: Record<string, number> = {};
+    debates.forEach((d: any) => {
+      const s = d.status || "unknown";
+      statusCounts[s] = (statusCounts[s] || 0) + 1;
+    });
+    const debatesByStatus = Object.entries(statusCounts).map(
+      ([status, count]) => ({ status, count }),
+    );
+
+    // Debates by category
+    const categoryCounts: Record<string, number> = {};
+    debates.forEach((d: any) => {
+      const cat = d.category || (d as any).prompt?.category || "Uncategorized";
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    });
+    const debatesByCategory = Object.entries(categoryCounts)
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Agent summaries with win/loss records
+    const topAgents = agents
+      .map((agent: any) => {
+        const agentParticipations = participants.filter(
+          (p: any) => p.agent_id === agent.id,
+        );
+        const debateIds = new Set(
+          agentParticipations.map((p: any) => p.debate_id),
+        );
+        const agentDebates = debates.filter((d: any) => debateIds.has(d.id));
+        const wins = agentDebates.filter(
+          (d: any) => d.winner_agent_id === agent.id,
+        ).length;
+        const completedDebates = agentDebates.filter(
+          (d: any) => d.status === "completed",
+        ).length;
+        const losses = completedDebates - wins;
+        const agentArgs = arguments_.filter(
+          (a: any) => a.agent_id === agent.id,
+        );
+
+        return {
+          agentId: agent.id,
+          agentName: agent.display_name,
+          totalDebates: agentDebates.length,
+          wins,
+          losses: Math.max(0, losses),
+          winRate: completedDebates > 0 ? (wins / completedDebates) * 100 : 0,
+          totalArguments: agentArgs.length,
+          isClaimed: agent.is_claimed,
+          verificationStatus: agent.verification_status,
+          createdAt: agent.created_at,
+        };
+      })
+      .sort((a: any, b: any) => b.totalDebates - a.totalDebates);
+
+    // Model usage breakdown
+    const modelMap: Record<
+      string,
+      { totalArguments: number; agents: Set<string>; totalWords: number }
+    > = {};
+    arguments_.forEach((arg: any) => {
+      const model = arg.model || "unknown";
+      if (!modelMap[model]) {
+        modelMap[model] = {
+          totalArguments: 0,
+          agents: new Set(),
+          totalWords: 0,
+        };
+      }
+      modelMap[model].totalArguments += 1;
+      modelMap[model].agents.add(arg.agent_id);
+      modelMap[model].totalWords += arg.word_count || 0;
+    });
+    const modelUsage = Object.entries(modelMap)
+      .map(([model, data]) => ({
+        model,
+        totalArguments: data.totalArguments,
+        uniqueAgents: data.agents.size,
+        averageWordCount:
+          data.totalArguments > 0
+            ? Math.round(data.totalWords / data.totalArguments)
+            : 0,
+      }))
+      .sort((a, b) => b.totalArguments - a.totalArguments);
+
+    const response: ExpandedPlatformStatsResponse = {
+      stats,
+      debatesByStatus,
+      debatesByCategory,
+      topAgents,
+      modelUsage,
+      generatedAt: new Date(),
+    };
+
+    return { success: true, data: response };
+  } catch (error) {
+    console.error("Error fetching expanded platform stats:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch platform statistics",
     };
   }
 }
@@ -90,20 +254,28 @@ export async function getPlatformStats(input: Partial<GetPlatformStatsInput> = {
 
 export async function getDebateStats(input: GetDebateStatsInput) {
   try {
-    const { debateId, includeTimeSeries = false, includeEngagement = true } = input;
+    const {
+      debateId,
+      includeTimeSeries = false,
+      includeEngagement = true,
+    } = input;
 
     const supabase = await createClient();
 
     // Fetch debate with related data
-    const [debateResult, votesResult, argumentsResult, participantsResult] = await Promise.all([
-      supabase.from('debates').select('*').eq('id', debateId).single(),
-      supabase.from('votes').select('*').eq('debate_id', debateId),
-      supabase.from('arguments').select('*').eq('debate_id', debateId),
-      supabase.from('debate_participants').select('*').eq('debate_id', debateId),
-    ]);
+    const [debateResult, votesResult, argumentsResult, participantsResult] =
+      await Promise.all([
+        supabase.from("debates").select("*").eq("id", debateId).single(),
+        supabase.from("votes").select("*").eq("debate_id", debateId),
+        supabase.from("arguments").select("*").eq("debate_id", debateId),
+        supabase
+          .from("debate_participants")
+          .select("*")
+          .eq("debate_id", debateId),
+      ]);
 
     if (debateResult.error || !debateResult.data) {
-      throw new StatsNotFoundError('Debate');
+      throw new StatsNotFoundError("Debate");
     }
     if (votesResult.error) throw votesResult.error;
     if (argumentsResult.error) throw argumentsResult.error;
@@ -124,13 +296,16 @@ export async function getDebateStats(input: GetDebateStatsInput) {
 
     return { success: true, data: response };
   } catch (error) {
-    console.error('Error fetching debate stats:', error);
+    console.error("Error fetching debate stats:", error);
     if (error instanceof StatsError) {
       return { success: false, error: error.message, code: error.code };
     }
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch debate statistics',
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch debate statistics",
     };
   }
 }
@@ -152,33 +327,42 @@ export async function getAgentStats(input: GetAgentStatsInput) {
     const supabase = await createClient();
 
     // Fetch agent data
-    const agentResult = await supabase.from('profiles').select('*').eq('id', agentId).eq('user_type', 'agent').single();
+    const agentResult = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", agentId)
+      .eq("user_type", "agent")
+      .single();
 
     if (agentResult.error || !agentResult.data) {
-      throw new StatsNotFoundError('Agent');
+      throw new StatsNotFoundError("Agent");
     }
 
     // Fetch agent's debates
     const participantsResult = await supabase
-      .from('debate_participants')
-      .select('*, debates(*)')
-      .eq('agent_id', agentId);
+      .from("debate_participants")
+      .select("*, debates(*)")
+      .eq("agent_id", agentId);
 
     if (participantsResult.error) throw participantsResult.error;
 
-    const debates = participantsResult.data
-      ?.map((p: any) => p.debates)
-      .filter((d): d is any => d !== null) || [];
+    const debates =
+      participantsResult.data
+        ?.map((p: any) => p.debates)
+        .filter((d): d is any => d !== null) || [];
 
     // Fetch agent's votes
-    const votesResult = await supabase.from('votes').select('*').eq('debate_id', agentId);
+    const votesResult = await supabase
+      .from("votes")
+      .select("*")
+      .eq("debate_id", agentId);
     if (votesResult.error) throw votesResult.error;
 
     // Fetch agent's arguments
     const argumentsResult = await supabase
-      .from('arguments')
-      .select('*')
-      .eq('agent_id', agentId);
+      .from("arguments")
+      .select("*")
+      .eq("agent_id", agentId);
 
     if (argumentsResult.error) throw argumentsResult.error;
 
@@ -192,7 +376,10 @@ export async function getAgentStats(input: GetAgentStatsInput) {
 
     // Calculate performance over time
     const performanceOverTime = includePerformanceHistory
-      ? calculateAgentPerformanceOverTime(agentId, debates, 'week').slice(0, performanceHistoryLimit)
+      ? calculateAgentPerformanceOverTime(agentId, debates, "week").slice(
+          0,
+          performanceHistoryLimit,
+        )
       : [];
 
     // Calculate category breakdown
@@ -217,13 +404,16 @@ export async function getAgentStats(input: GetAgentStatsInput) {
 
     return { success: true, data: response };
   } catch (error) {
-    console.error('Error fetching agent stats:', error);
+    console.error("Error fetching agent stats:", error);
     if (error instanceof StatsError) {
       return { success: false, error: error.message, code: error.code };
     }
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch agent statistics',
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch agent statistics",
     };
   }
 }
@@ -232,7 +422,7 @@ function calculateCategoryBreakdown(agentId: string, debates: any[]) {
   const categoryMap: Record<string, any> = {};
 
   debates.forEach((debate) => {
-    const category = debate.category || 'Uncategorized';
+    const category = debate.category || "Uncategorized";
     if (!categoryMap[category]) {
       categoryMap[category] = {
         category,
@@ -247,7 +437,10 @@ function calculateCategoryBreakdown(agentId: string, debates: any[]) {
     categoryMap[category].debatesCount++;
     if (debate.winner_agent_id === agentId) {
       categoryMap[category].wins++;
-    } else if (debate.status === 'completed' && debate.winner_agent_id !== agentId) {
+    } else if (
+      debate.status === "completed" &&
+      debate.winner_agent_id !== agentId
+    ) {
       categoryMap[category].losses++;
     }
   });
@@ -258,34 +451,50 @@ function calculateCategoryBreakdown(agentId: string, debates: any[]) {
   }));
 }
 
-function getRecentAgentDebates(agentId: string, debates: any[], limit: number): AgentDebateSummary[] {
+function getRecentAgentDebates(
+  agentId: string,
+  debates: any[],
+  limit: number,
+): AgentDebateSummary[] {
   return debates
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )
     .slice(0, limit)
     .map((debate) => {
-      const participant = debate.participants?.find((p: any) => p.agent_id === agentId);
+      const participant = debate.participants?.find(
+        (p: any) => p.agent_id === agentId,
+      );
       return {
         debateId: debate.id,
         debateTitle: debate.title,
-        side: participant?.side || 'for',
+        side: participant?.side || "for",
         result:
           debate.winner_agent_id === agentId
-            ? 'win'
-            : debate.status === 'completed'
-            ? 'loss'
-            : 'ongoing',
-        argumentsCount: debate.arguments?.filter((a: any) => a.agent_id === agentId).length || 0,
-        votesReceived: debate.votes?.filter((v: any) => v.side === participant?.side).length || 0,
+            ? "win"
+            : debate.status === "completed"
+              ? "loss"
+              : "ongoing",
+        argumentsCount:
+          debate.arguments?.filter((a: any) => a.agent_id === agentId).length ||
+          0,
+        votesReceived:
+          debate.votes?.filter((v: any) => v.side === participant?.side)
+            .length || 0,
         createdAt: debate.created_at,
       };
     });
 }
 
 function calculateModelBreakdown(argumentsData: any[]) {
-  const modelMap: Record<string, { totalArguments: number; totalLength: number; lastUsedTs: number }> = {};
+  const modelMap: Record<
+    string,
+    { totalArguments: number; totalLength: number; lastUsedTs: number }
+  > = {};
 
   argumentsData.forEach((argument) => {
-    const model = argument.model || 'unknown/legacy';
+    const model = argument.model || "unknown/legacy";
     const createdAt = new Date(argument.created_at).getTime();
 
     if (!modelMap[model]) {
@@ -298,7 +507,10 @@ function calculateModelBreakdown(argumentsData: any[]) {
 
     modelMap[model].totalArguments += 1;
     modelMap[model].totalLength += argument.content?.length || 0;
-    modelMap[model].lastUsedTs = Math.max(modelMap[model].lastUsedTs, createdAt);
+    modelMap[model].lastUsedTs = Math.max(
+      modelMap[model].lastUsedTs,
+      createdAt,
+    );
   });
 
   return Object.entries(modelMap)
@@ -316,17 +528,24 @@ function calculateModelBreakdown(argumentsData: any[]) {
 // Category Statistics
 // ============================================================================
 
-export async function getCategoryStats(input: Partial<GetCategoryStatsInput> = {}) {
+export async function getCategoryStats(
+  input: Partial<GetCategoryStatsInput> = {},
+) {
   try {
-    const { category, sortBy = 'debates', sortOrder = 'desc', limit = 20 } = input;
+    const {
+      category,
+      sortBy = "debates",
+      sortOrder = "desc",
+      limit = 20,
+    } = input;
 
     const supabase = await createClient();
 
     // Build query
-    let query = supabase.from('debates').select('*');
+    let query = supabase.from("debates").select("*");
 
     if (category) {
-      query = query.eq('category', category);
+      query = query.eq("category", category);
     }
 
     const { data: debates, error } = await query;
@@ -337,7 +556,7 @@ export async function getCategoryStats(input: Partial<GetCategoryStatsInput> = {
     const categoryMap: Record<string, any[]> = {};
 
     (debates || []).forEach((debate) => {
-      const cat = (debate as any).category || 'Uncategorized';
+      const cat = (debate as any).category || "Uncategorized";
       if (!categoryMap[cat]) {
         categoryMap[cat] = [];
       }
@@ -345,21 +564,23 @@ export async function getCategoryStats(input: Partial<GetCategoryStatsInput> = {
     });
 
     // Calculate stats for each category
-    const statsPromises = Object.entries(categoryMap).map(async ([cat, catDebates]) => {
-      const debateIds = catDebates.map((d) => d.id);
+    const statsPromises = Object.entries(categoryMap).map(
+      async ([cat, catDebates]) => {
+        const debateIds = catDebates.map((d) => d.id);
 
-      const [votesResult, argumentsResult] = await Promise.all([
-        supabase.from('votes').select('*').in('debate_id', debateIds),
-        supabase.from('arguments').select('*').in('debate_id', debateIds),
-      ]);
+        const [votesResult, argumentsResult] = await Promise.all([
+          supabase.from("votes").select("*").in("debate_id", debateIds),
+          supabase.from("arguments").select("*").in("debate_id", debateIds),
+        ]);
 
-      return calculateCategoryStats({
-        category: cat,
-        debates: catDebates,
-        votes: votesResult.data || [],
-        arguments: argumentsResult.data || [],
-      });
-    });
+        return calculateCategoryStats({
+          category: cat,
+          debates: catDebates,
+          votes: votesResult.data || [],
+          arguments: argumentsResult.data || [],
+        });
+      },
+    );
 
     const allStats = await Promise.all(statsPromises);
 
@@ -367,7 +588,7 @@ export async function getCategoryStats(input: Partial<GetCategoryStatsInput> = {
     const sortedStats = allStats.sort((a, b) => {
       const aVal = (a as any)[sortBy] as number;
       const bVal = (b as any)[sortBy] as number;
-      return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+      return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
     });
 
     const response: CategoryStatsResponse = {
@@ -377,10 +598,13 @@ export async function getCategoryStats(input: Partial<GetCategoryStatsInput> = {
 
     return { success: true, data: response };
   } catch (error) {
-    console.error('Error fetching category stats:', error);
+    console.error("Error fetching category stats:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch category statistics',
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch category statistics",
     };
   }
 }
@@ -391,29 +615,35 @@ export async function getCategoryStats(input: Partial<GetCategoryStatsInput> = {
 
 export async function getLeaderboard(input: Partial<GetLeaderboardInput> = {}) {
   try {
-    const { limit = 10, category, timePeriod = 'all', sortBy = 'winRate' } = input;
+    const {
+      limit = 10,
+      category,
+      timePeriod = "all",
+      sortBy = "winRate",
+    } = input;
 
     const supabase = await createClient();
 
     // Fetch all agents with their debate participations
     const { data: agents, error: agentsError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_type', 'agent')
-      .order('created_at', { ascending: false });
+      .from("profiles")
+      .select("*")
+      .eq("user_type", "agent")
+      .order("created_at", { ascending: false });
 
     if (agentsError) throw agentsError;
 
     // Calculate performance for each agent
     const agentStatsPromises = (agents || []).map(async (agent) => {
       const { data: participants } = await supabase
-        .from('debate_participants')
-        .select('*, debates(*)')
-        .eq('agent_id', (agent as any).id);
+        .from("debate_participants")
+        .select("*, debates(*)")
+        .eq("agent_id", (agent as any).id);
 
-      const debates = participants
-        ?.map((p: any) => p.debates)
-        .filter((d): d is any => d !== null) || [];
+      const debates =
+        participants
+          ?.map((p: any) => p.debates)
+          .filter((d): d is any => d !== null) || [];
 
       // Filter by category if specified
       const filteredDebates = category
@@ -421,7 +651,10 @@ export async function getLeaderboard(input: Partial<GetLeaderboardInput> = {}) {
         : debates;
 
       // Filter by time period if specified
-      const timeFilteredDebates = filterByTimePeriod(filteredDebates, timePeriod);
+      const timeFilteredDebates = filterByTimePeriod(
+        filteredDebates,
+        timePeriod,
+      );
 
       const performance = calculateAgentPerformance({
         agent,
@@ -466,28 +699,29 @@ export async function getLeaderboard(input: Partial<GetLeaderboardInput> = {}) {
 
     return { success: true, data: response };
   } catch (error) {
-    console.error('Error fetching leaderboard:', error);
+    console.error("Error fetching leaderboard:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch leaderboard',
+      error:
+        error instanceof Error ? error.message : "Failed to fetch leaderboard",
     };
   }
 }
 
 function filterByTimePeriod(debates: any[], period: string): any[] {
-  if (period === 'all') return debates;
+  if (period === "all") return debates;
 
   const now = new Date();
   let startDate: Date;
 
   switch (period) {
-    case 'week':
+    case "week":
       startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       break;
-    case 'month':
+    case "month":
       startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       break;
-    case 'year':
+    case "year":
       startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
       break;
     default:
@@ -501,7 +735,9 @@ function filterByTimePeriod(debates: any[], period: string): any[] {
 // Recent Activity
 // ============================================================================
 
-export async function getRecentActivity(input: Partial<GetRecentActivityInput> = {}) {
+export async function getRecentActivity(
+  input: Partial<GetRecentActivityInput> = {},
+) {
   try {
     const { limit = 20, activityType, agentId, debateId, dateRange } = input;
 
@@ -512,20 +748,20 @@ export async function getRecentActivity(input: Partial<GetRecentActivityInput> =
 
     // Get recent debates
     const { data: debates } = await supabase
-      .from('debates')
-      .select('*')
-      .order('created_at', { ascending: false })
+      .from("debates")
+      .select("*")
+      .order("created_at", { ascending: false })
       .limit(limit);
 
     debates?.forEach((debate: any) => {
       activities.push({
         id: `debate-${debate.id}`,
-        type: 'debate_created',
+        type: "debate_created",
         description: `New debate "${debate.title}" was created`,
         actorId: debate.created_by,
-        actorName: 'System',
+        actorName: "System",
         targetId: debate.id,
-        targetType: 'debate',
+        targetType: "debate",
         targetName: debate.title,
         createdAt: debate.created_at,
       });
@@ -533,20 +769,20 @@ export async function getRecentActivity(input: Partial<GetRecentActivityInput> =
 
     // Get recent arguments
     const { data: argumentsData } = await supabase
-      .from('arguments')
-      .select('*, profiles(*)')
-      .order('created_at', { ascending: false })
+      .from("arguments")
+      .select("*, profiles(*)")
+      .order("created_at", { ascending: false })
       .limit(limit);
 
     argumentsData?.forEach((arg: any) => {
       activities.push({
         id: `argument-${arg.id}`,
-        type: 'argument_posted',
+        type: "argument_posted",
         description: `New argument posted`,
         actorId: arg.agent_id,
-        actorName: arg.profiles?.display_name || 'Unknown',
+        actorName: arg.profiles?.display_name || "Unknown",
         targetId: arg.debate_id,
-        targetType: 'debate',
+        targetType: "debate",
         targetName: arg.debate_id,
         createdAt: arg.created_at,
       });
@@ -554,20 +790,20 @@ export async function getRecentActivity(input: Partial<GetRecentActivityInput> =
 
     // Get recent votes
     const { data: votes } = await supabase
-      .from('votes')
-      .select('*')
-      .order('created_at', { ascending: false })
+      .from("votes")
+      .select("*")
+      .order("created_at", { ascending: false })
       .limit(limit);
 
     votes?.forEach((vote: any) => {
       activities.push({
         id: `vote-${vote.id}`,
-        type: 'vote_cast',
+        type: "vote_cast",
         description: `Vote cast for ${vote.side}`,
         actorId: vote.user_id,
-        actorName: 'User',
+        actorName: "User",
         targetId: vote.debate_id,
-        targetType: 'debate',
+        targetType: "debate",
         targetName: vote.debate_id,
         createdAt: vote.created_at,
       });
@@ -575,21 +811,21 @@ export async function getRecentActivity(input: Partial<GetRecentActivityInput> =
 
     // Get recent agent registrations
     const { data: agents } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_type', 'agent')
-      .order('created_at', { ascending: false })
+      .from("profiles")
+      .select("*")
+      .eq("user_type", "agent")
+      .order("created_at", { ascending: false })
       .limit(limit);
 
     agents?.forEach((agent: any) => {
       activities.push({
         id: `agent-${agent.id}`,
-        type: 'agent_registered',
+        type: "agent_registered",
         description: `New agent "${agent.display_name}" registered`,
         actorId: agent.id,
         actorName: agent.display_name,
         targetId: agent.id,
-        targetType: 'agent',
+        targetType: "agent",
         targetName: agent.display_name,
         createdAt: agent.created_at,
       });
@@ -599,15 +835,21 @@ export async function getRecentActivity(input: Partial<GetRecentActivityInput> =
     let filteredActivities = activities;
 
     if (activityType) {
-      filteredActivities = filteredActivities.filter((a) => a.type === activityType);
+      filteredActivities = filteredActivities.filter(
+        (a) => a.type === activityType,
+      );
     }
 
     if (agentId) {
-      filteredActivities = filteredActivities.filter((a) => a.actorId === agentId);
+      filteredActivities = filteredActivities.filter(
+        (a) => a.actorId === agentId,
+      );
     }
 
     if (debateId) {
-      filteredActivities = filteredActivities.filter((a) => a.targetId === debateId);
+      filteredActivities = filteredActivities.filter(
+        (a) => a.targetId === debateId,
+      );
     }
 
     if (dateRange?.start && dateRange?.end) {
@@ -621,7 +863,10 @@ export async function getRecentActivity(input: Partial<GetRecentActivityInput> =
 
     // Sort and limit
     const sortedActivities = filteredActivities
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
       .slice(0, limit);
 
     const response: RecentActivityResponse = {
@@ -632,10 +877,13 @@ export async function getRecentActivity(input: Partial<GetRecentActivityInput> =
 
     return { success: true, data: response };
   } catch (error) {
-    console.error('Error fetching recent activity:', error);
+    console.error("Error fetching recent activity:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch recent activity',
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch recent activity",
     };
   }
 }
@@ -645,8 +893,8 @@ export async function getRecentActivity(input: Partial<GetRecentActivityInput> =
 // ============================================================================
 
 export async function revalidateStats() {
-  revalidatePath('/stats');
-  revalidatePath('/stats/debates/[id]');
-  revalidatePath('/stats/agents/[id]');
+  revalidatePath("/stats");
+  revalidatePath("/stats/debates/[id]");
+  revalidatePath("/stats/agents/[id]");
   return { success: true };
 }

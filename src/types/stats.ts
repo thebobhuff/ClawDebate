@@ -3,8 +3,8 @@
  */
 
 // Define types locally since they're not exported from debates.ts
-export type DebateStatus = 'pending' | 'active' | 'voting' | 'completed';
-export type DebateSide = 'for' | 'against';
+export type DebateStatus = "pending" | "active" | "voting" | "completed";
+export type DebateSide = "for" | "against";
 
 // ============================================================================
 // Platform Statistics Types
@@ -26,6 +26,46 @@ export interface PlatformStats {
 
 export interface PlatformStatsResponse {
   stats: PlatformStats;
+  generatedAt: Date;
+}
+
+// Expanded platform stats for the main stats page
+export interface DebateBreakdown {
+  status: string;
+  count: number;
+}
+
+export interface CategoryBreakdownItem {
+  category: string;
+  count: number;
+}
+
+export interface AgentSummary {
+  agentId: string;
+  agentName: string;
+  totalDebates: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  totalArguments: number;
+  isClaimed: boolean;
+  verificationStatus: string;
+  createdAt: string;
+}
+
+export interface ModelUsage {
+  model: string;
+  totalArguments: number;
+  uniqueAgents: number;
+  averageWordCount: number;
+}
+
+export interface ExpandedPlatformStatsResponse {
+  stats: PlatformStats;
+  debatesByStatus: DebateBreakdown[];
+  debatesByCategory: CategoryBreakdownItem[];
+  topAgents: AgentSummary[];
+  modelUsage: ModelUsage[];
   generatedAt: Date;
 }
 
@@ -124,7 +164,7 @@ export interface AgentDebateSummary {
   debateId: string;
   debateTitle: string;
   side: DebateSide;
-  result: 'win' | 'loss' | 'draw' | 'ongoing';
+  result: "win" | "loss" | "draw" | "ongoing";
   argumentsCount: number;
   votesReceived: number;
   createdAt: Date;
@@ -192,14 +232,14 @@ export interface LeaderboardResponse {
 // Activity Types
 // ============================================================================
 
-export type ActivityType = 
-  | 'debate_created'
-  | 'debate_started'
-  | 'debate_completed'
-  | 'argument_posted'
-  | 'vote_cast'
-  | 'agent_registered'
-  | 'prompt_published';
+export type ActivityType =
+  | "debate_created"
+  | "debate_started"
+  | "debate_completed"
+  | "argument_posted"
+  | "vote_cast"
+  | "agent_registered"
+  | "prompt_published";
 
 export interface ActivityItem {
   id: string;
@@ -224,7 +264,7 @@ export interface RecentActivityResponse {
 // Time-Based Statistics Types
 // ============================================================================
 
-export type TimePeriod = 'hour' | 'day' | 'week' | 'month' | 'year';
+export type TimePeriod = "hour" | "day" | "week" | "month" | "year";
 
 export interface TimeSeriesData {
   period: string;
@@ -252,7 +292,7 @@ export interface EngagementMetrics {
   averageTimeOnPage: number; // in seconds
   bounceRate: number; // percentage
   engagementScore: number; // 0-100
-  engagementTrend: 'up' | 'down' | 'stable';
+  engagementTrend: "up" | "down" | "stable";
 }
 
 // ============================================================================
@@ -275,7 +315,7 @@ export interface PaginationParams {
   page: number;
   limit: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
 }
 
 export interface StatsQuery extends StatsFilters, PaginationParams {}
@@ -316,16 +356,16 @@ export interface StatWidget {
   title: string;
   value: number | string;
   change?: number;
-  changeType?: 'increase' | 'decrease' | 'neutral';
+  changeType?: "increase" | "decrease" | "neutral";
   icon?: string;
   color?: string;
   link?: string;
 }
 
 export interface WidgetConfig {
-  type: 'stat' | 'chart' | 'list' | 'timeline';
+  type: "stat" | "chart" | "list" | "timeline";
   title: string;
-  size: 'small' | 'medium' | 'large';
+  size: "small" | "medium" | "large";
   refreshInterval?: number; // in milliseconds
 }
 
@@ -337,30 +377,30 @@ export class StatsError extends Error {
   constructor(
     message: string,
     public code: string,
-    public statusCode: number = 500
+    public statusCode: number = 500,
   ) {
     super(message);
-    this.name = 'StatsError';
+    this.name = "StatsError";
   }
 }
 
 export class StatsNotFoundError extends StatsError {
   constructor(resource: string) {
-    super(`${resource} not found`, 'NOT_FOUND', 404);
-    this.name = 'StatsNotFoundError';
+    super(`${resource} not found`, "NOT_FOUND", 404);
+    this.name = "StatsNotFoundError";
   }
 }
 
 export class StatsValidationError extends StatsError {
   constructor(message: string) {
-    super(message, 'VALIDATION_ERROR', 400);
-    this.name = 'StatsValidationError';
+    super(message, "VALIDATION_ERROR", 400);
+    this.name = "StatsValidationError";
   }
 }
 
 export class StatsPermissionError extends StatsError {
-  constructor(message: string = 'Permission denied') {
-    super(message, 'PERMISSION_DENIED', 403);
-    this.name = 'StatsPermissionError';
+  constructor(message: string = "Permission denied") {
+    super(message, "PERMISSION_DENIED", 403);
+    this.name = "StatsPermissionError";
   }
 }
