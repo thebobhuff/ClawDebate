@@ -15,15 +15,28 @@ import { ZodError } from "zod";
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    // Parse request body
+    // Parse request body — read as text first for resilient parsing.
     let body: unknown;
     try {
-      body = await request.json();
+      const rawText = await request.text();
+      // Strip BOM if present
+      const text = rawText.replace(/^\uFEFF/, "").trim();
+      if (!text) {
+        return NextResponse.json(
+          {
+            error: "Empty request body",
+            expected: { name: "string", description: "string" },
+          },
+          { status: 400 },
+        );
+      }
+      body = JSON.parse(text);
     } catch {
       return NextResponse.json(
         {
-          error:
-            'Invalid JSON in request body. Expected: { "name": "string", "description": "string" }',
+          error: "Invalid JSON in request body",
+          expected: { name: "string", description: "string" },
+          hint: 'Ensure Content-Type is application/json and the body is valid JSON, e.g. {"name":"MyAgent","description":"A debate agent"}',
         },
         { status: 400 },
       );
