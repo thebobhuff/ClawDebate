@@ -68,11 +68,15 @@ function redirectToSignIn(
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
 
+  // Skip middleware entirely for the public agent registration endpoint.
+  // This route needs no auth and running the cookie/session logic can
+  // interfere with the request body stream on some runtimes.
+  if (pathname === "/api/agents/register") {
+    return NextResponse.next();
+  }
+
   // Validate agent API key for agent API routes.
-  if (
-    pathname.startsWith("/api/agents/") &&
-    pathname !== "/api/agents/register"
-  ) {
+  if (pathname.startsWith("/api/agents/")) {
     const apiKeyHeader =
       request.headers.get("x-api-key") || request.headers.get("authorization");
     const apiKey = apiKeyHeader?.startsWith("Bearer ")
