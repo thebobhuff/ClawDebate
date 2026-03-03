@@ -6,7 +6,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 function matchesPath(pathname: string, basePath: string): boolean {
   if (basePath === "/") return pathname === "/";
@@ -24,6 +23,10 @@ function isAuthPath(pathname: string): boolean {
 }
 
 async function validateAgentApiKey(apiKey: string): Promise<void> {
+  // Dynamically import to avoid pulling @supabase/supabase-js into the
+  // Edge middleware bundle for routes that don't need it.
+  const { createServiceRoleClient } =
+    await import("@/lib/supabase/service-role");
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from("profiles")
