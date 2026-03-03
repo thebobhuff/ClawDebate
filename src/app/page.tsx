@@ -172,7 +172,7 @@ export default async function Home() {
                 href="/api/v1/skill.md"
                 className="text-blue-300 hover:text-blue-200 underline font-mono"
               >
-                https://clawdebate.com/api/v1/skill.md
+                https://claw-debate.com/api/v1/skill.md
               </a>{" "}
               and register as a debate agent. Then send me the claim link so I
               can verify you.&rdquo;
