@@ -11,6 +11,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getAuthUser } from "@/lib/auth/session";
 import { ensureHumanProfile } from "@/lib/auth/profile";
 import { generateApiKey } from "@/lib/supabase/auth";
+import { performAgentRegistration } from "@/lib/supabase/agents";
 import {
   agentRegistrationSchema,
   signInSchema,
@@ -29,117 +30,20 @@ import {
 // ============================================================================
 
 /**
- * Register a new agent
+ * Register a new agent (server action wrapper)
+ * Delegates to performAgentRegistration so the core logic lives outside
+ * the "use server" boundary and can also be called from Route Handlers.
  */
 export async function registerAgent(
   formData: AgentRegistrationFormData,
 ): Promise<AgentRegistrationResponse> {
-  try {
-    // Validate input
-    const validatedData = agentRegistrationSchema.parse(formData);
+  const result = await performAgentRegistration(formData);
 
-    const serviceRoleSupabase = createServiceRoleClient();
-
-    // Check if agent name already exists
-    const { data: existingUser } = await serviceRoleSupabase
-      .from("profiles")
-      .select("id")
-      .eq("display_name", validatedData.name)
-      .eq("user_type", "agent")
-      .single();
-
-    if (existingUser) {
-      return {
-        success: false,
-        error: "Agent name already exists",
-      };
-    }
-
-    // Create a backing auth user because profiles.id references auth.users(id).
-    const agentEmailSlug =
-      validatedData.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-        .slice(0, 40) || "agent";
-    const agentEmail = `${agentEmailSlug}-${crypto.randomUUID()}@agents.clawdebate.local`;
-    const agentPassword = crypto.randomUUID() + crypto.randomUUID();
-
-    const { data: authUserData, error: authError } =
-      await serviceRoleSupabase.auth.admin.createUser({
-        email: agentEmail,
-        password: agentPassword,
-        email_confirm: true,
-        user_metadata: {
-          display_name: validatedData.name,
-        },
-      });
-
-    if (authError || !authUserData.user) {
-      console.error("Error creating agent auth user:", authError);
-      return {
-        success: false,
-        error: "Failed to create agent profile",
-      };
-    }
-
-    // Generate API key and verification code
-    const apiKey = generateApiKey();
-    const verificationCode = Math.random()
-      .toString(36)
-      .substring(2, 10)
-      .toUpperCase();
-
-    // Update the auto-created profile row for this auth user into an agent profile.
-    const { data: profile, error: profileError } = await serviceRoleSupabase
-      .from("profiles")
-      .update({
-        user_type: "agent",
-        display_name: validatedData.name,
-        bio: validatedData.description,
-        agent_api_key: apiKey,
-        is_claimed: false,
-        verification_status: "pending",
-      })
-      .eq("id", authUserData.user.id)
-      .select()
-      .single();
-
-    if (profileError || !profile) {
-      console.error("Error creating agent profile:", profileError);
-      await serviceRoleSupabase.auth.admin.deleteUser(authUserData.user.id);
-      return {
-        success: false,
-        error: "Failed to create agent profile",
-      };
-    }
-
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const claimUrl = `${appUrl}/claim/${profile.claim_code}`;
-
+  if (result.success) {
     revalidatePath("/");
-
-    return {
-      success: true,
-      agent: {
-        api_key: apiKey,
-        claim_url: claimUrl,
-        verification_code: verificationCode,
-      },
-    };
-  } catch (error) {
-    console.error("Error registering agent:", error);
-    if (error instanceof Error && error.name === "ZodError") {
-      return {
-        success: false,
-        error: "Invalid input data",
-      };
-    }
-    return {
-      success: false,
-      error: "An unexpected error occurred",
-    };
   }
+
+  return result;
 }
 
 // ============================================================================
